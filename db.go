@@ -69,21 +69,22 @@ func (t Task) AddTask(db *sql.DB) (err error) {
     return err
 }
     
-func Count(db *sql.DB, sw string) (count int, err error) {
+func Count(db *sql.DB, sw int) (count int, err error) {
     query := "select count(*) from tasklist where done = 0;"
-    
-    if sw == "closed" {
-        query = "select count(*) from tasklist where done = 1;"
-    }
-    if sw == "all" {
+    switch sw {
+    case SW_ALL:
         query = "select count(*) from tasklist;"
+    case SW_CLOSED: 
+        query = "select count(*) from tasklist where done = 1;"
+    case SW_OVERDUE:
+        tm := time.Now().Format(time.RFC3339)
+        query = fmt.Sprintf("select count(*) from tasklist where done = 0 and duedate < %s;", tm)
     }
-
     err = db.QueryRow(query).Scan(&count)
     return
 }
 
-func List(db *sql.DB, sw string) (tl TaskList, err error) {
+func List(db *sql.DB, sw int) (tl TaskList, err error) {
     query := "select * from tasklist where done = 0;"
 
     rows, err := db.Query(query)
@@ -111,3 +112,19 @@ func List(db *sql.DB, sw string) (tl TaskList, err error) {
     }
     return 
 }
+
+func (t Task) Complete(db *sql.DB) (err error) {
+    query := "update tasklist set done = 1, completed = ?, updated = ?;"
+    tm := time.Now().Format(time.RFC3339)
+    _, err = db.Exec(query, tm, tm)
+    return err
+}
+
+func (t Task) Reopen(db *sql.DB) (err error) {
+    query := "update tasklist set done = 0, completed = null, updated = ?;"
+    tm := time.Now().Format(time.RFC3339)
+    _, err = db.Exec(query, tm)
+    return err
+}
+
+
