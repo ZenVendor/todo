@@ -9,6 +9,17 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+type Task struct {
+    id int
+    description string
+    done int
+    duedate string
+    created string
+    completed string
+    updated string
+}
+type TaskList []Task
+
 func TableExists(db *sql.DB) bool {
     var rowId int
     if err := db.QueryRow("select rowid from sqlite_schema where type = 'table' and tbl_name = 'tasklist';").Scan(&rowId); err != nil {
@@ -26,7 +37,7 @@ func CreateTable(db *sql.DB) error {
         create table tasklist (
             id integer not null primary key,
             description text not null,
-            done boolean not null,
+            done integer not null,
             duedate date,
             created date not null,
             completed date,
@@ -38,72 +49,60 @@ func CreateTable(db *sql.DB) error {
     return err
 }
 
-
-
-func OpenDB(location string) (*sql.DB, error) {
-    db, err := sql.Open("sqlite3", fmt.Sprint(location, "todo.db"))
-    if err != nil {
-        log.Fatal(err)
-    }
-    if TableExists(db) {
-        return db, err
-    }
-    if err = CreateTable(db); err != nil {
-        log.Fatal(err)
-    }
-    return db, err
-}
-
-func (t Task) AddTask(db *sql.DB) error {
-    stmt, err := db.Prepare("insert into tasklist (description, done, duedate, created, updated) values (?, ?, ?, ?, ?);")
-    if err != nil {
-        return err
-    }
-    tm := time.Now().Format(time.RFC3339)
-    _, err = stmt.Exec(t.description, t.done, t.duedate, tm, tm)
-    return err
-}
-    
-func Count(db *sql.DB, sw string) (int, error) {
-    var count int
-    var stmt *sql.Stmt
-
-    var err error
-    switch sw {
-    case "closed":
-        stmt, err = db.Prepare("select count(*) from tasklist where done = 'true';")
-    case "all":
-        stmt, err = db.Prepare("select count(*) from tasklist;")
-    default:
-        stmt, err = db.Prepare("select count(*) from tasklist where done = 'false';")
-    }
-    if err != nil {
-        return count, err     
-    }
-    err = stmt.QueryRow().Scan(&count)
-    return count, err
-}
-
-func List(db *sql.DB, sw string) (tl TaskList, err error) {
-    var stmt *sql.Stmt
-
-    switch sw {
-    case "closed":
-    default:
-        stmt, err = db.Prepare("select * from tasklist where done = 'false';")
-    }
+func OpenDB(location string) (db *sql.DB, err error) {
+    db, err = sql.Open("sqlite3", fmt.Sprint(location, "todo.db"))
     if err != nil {
         return
     }
-    rows, err := stmt.Query()
+    if !TableExists(db) {
+        if err = CreateTable(db); err != nil {
+            return
+        }
+    }
+    return 
+}
+
+func (t Task) AddTask(db *sql.DB) (err error) {
+    query := "insert into tasklist (description, done, duedate, created, updated) values (?, ?, ?, ?, ?);"
+    tm := time.Now().Format(time.RFC3339)
+    _, err = db.Exec(query, t.description, t.done, t.duedate, tm, tm)
+    return err
+}
+    
+func Count(db *sql.DB, sw string) (count int, err error) {
+    query := "select count(*) from tasklist where done = 0;"
+    
+    if sw == "closed" {
+        query = "select count(*) from tasklist where done = 1;"
+    }
+    if sw == "all" {
+        query = "select count(*) from tasklist;"
+    }
+
+    err = db.QueryRow(query).Scan(&count)
+    return
+}
+
+func List(db *sql.DB, sw string) (tl TaskList, err error) {
+    query := "select * from tasklist where done = 0;"
+
+    rows, err := db.Query(query)
     if err != nil {
         return 
     }
     defer rows.Close()
+    
     for rows.Next() {
         var t Task
-        if err = rows.Scan(&t.id, &t.description, &t.done, &t.duedate, &t.created, &t.completed, &t.updated); err != nil {
+        var due, comp sql.NullString
+        if err = rows.Scan(&t.id, &t.description, &t.done, &due, &t.created, &comp, &t.updated); err != nil {
             return
+        }
+        if due.Valid {
+            t.duedate = due.String
+        }
+        if comp.Valid {
+            t.completed = comp.String
         }
         tl = append(tl, t)
     }

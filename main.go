@@ -8,24 +8,13 @@ import (
 	"strings"
 )
 
-type Task struct {
-    id int
-    description string
-    done bool
-    duedate string
-    created string
-    completed string
-    updated string
-}
-type TaskList []Task
-
 func printHelp() {
     fmt.Printf("ToDo list\n\n")
     fmt.Printf("Options:\n")
     fmt.Printf("\tadd <description>\tAdd new task.\n")
     fmt.Printf("\tlist [done|all]\tList active (default), done or all tasks.\n")
     fmt.Printf("\tdo <task_id>\tMark task as done.\n")
-    fmt.Printf("\tundo <task_id>\tReactivate task.\n")
+    fmt.Printf("\tundo <task_id>\tReactivate task.\n\n")
 }
 
 func main () {
@@ -46,7 +35,7 @@ func main () {
             fmt.Printf("Please write description. No task added.\n")
         }
         fmt.Printf("Adding task: %s\n", args[1])
-        t := Task{0, args[1], false, "", "", "", ""}
+        t := Task{0, args[1], 0, "", "", "", ""}
         if err = t.AddTask(db); err != nil {
             log.Fatal(err)
         }
