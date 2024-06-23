@@ -76,8 +76,7 @@ func Count(db *sql.DB, sw int) (count int, err error) {
     case SW_CLOSED: 
         query = "select count(*) from tasklist where done = 1;"
     case SW_OVERDUE:
-        now := time.Now().Format(time.RFC3339)
-        query = fmt.Sprintf("select count(*) from tasklist where done = 0 and duedate < %s;", now)
+        query = fmt.Sprintf("select count(*) from tasklist where done = 0 and duedate between '2000-01-01' and '%s';", time.Now())
     }
     err = db.QueryRow(query).Scan(&count)
     return
@@ -94,21 +93,13 @@ func List(db *sql.DB, sw int) (tl TaskList, err error) {
         query = `
             select * 
             from tasklist 
-            where done = 0
-            order by duedate asc nulls last, created desc;
-            select * 
-            from tasklist 
-            where done = 1
-            order by completed desc;
+            order by done, completed desc, duedate asc nulls last, created; 
         `
     case SW_OVERDUE:
-        now := time.Now().Format(time.RFC3339)
-        query = fmt.Sprintf("select * from tasklist where duedate < %s;", now)
-    default:
-        query = "select * from tasklist where done = 0 order by duedate asc nulls last, created desc;"
+        query = fmt.Sprintf("select * from tasklist where duedate between '2000-01-01' and '%s';", time.Now().Format("2006-01-02"))
     }
-
-    rows, err := db.Query(query)
+    
+    rows, err := db.Query(query) 
     if err != nil {
         return 
     }

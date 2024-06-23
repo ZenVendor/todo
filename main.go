@@ -147,8 +147,6 @@ func main () {
         fmt.Printf("Task %d has been reopened\n", num_arg)
     }
 
-    loc, _ := time.LoadLocation("Europe/Warsaw")
-
     if command == CMD_ADD {
         var t Task
 
@@ -158,7 +156,7 @@ func main () {
 
         if len(args) == 3 {
             if sw == SW_DUE {   
-                duedate, err := time.ParseInLocation("2006-01-02", args[sw_arg], loc)
+                duedate, err := time.Parse("2006-01-02", args[sw_arg])
                 if err != nil {
                     log.Fatal(err)
                 }
@@ -202,6 +200,9 @@ func main () {
         fmt.Printf("%s tasks: %d\n", t_type, count)
         for _, t := range tl {
             t_status := "Open"
+            if t.done == 0 && t.duedate.Year() != 1 && t.duedate.Before(time.Now()) {
+                t_status = "Overdue"
+            }
             if t.done == 1 {
                 t_status = "Closed"
             }
