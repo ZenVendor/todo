@@ -13,10 +13,10 @@ type Task struct {
     id int
     description string
     done int
-    duedate string
-    created string
-    completed string
-    updated string
+    duedate time.Time
+    created time.Time
+    completed time.Time
+    updated time.Time
 }
 type TaskList []Task
 
@@ -38,9 +38,9 @@ func CreateTable(db *sql.DB) error {
             id integer not null primary key,
             description text not null,
             done integer not null,
-            duedate date,
-            created date not null,
-            completed date,
+            duedate datetime,
+            created datetime not null,
+            completed datetime,
             updated datetime not null
         );
     `
@@ -64,8 +64,7 @@ func OpenDB(location string) (db *sql.DB, err error) {
 
 func (t Task) AddTask(db *sql.DB) (err error) {
     query := "insert into tasklist (description, done, duedate, created, updated) values (?, ?, ?, ?, ?);"
-    tm := time.Now().Format(time.RFC3339)
-    _, err = db.Exec(query, t.description, t.done, t.duedate, tm, tm)
+    _, err = db.Exec(query, t.description, t.done, t.duedate, t.created, t.updated)
     return err
 }
     
@@ -77,15 +76,37 @@ func Count(db *sql.DB, sw int) (count int, err error) {
     case SW_CLOSED: 
         query = "select count(*) from tasklist where done = 1;"
     case SW_OVERDUE:
-        tm := time.Now().Format(time.RFC3339)
-        query = fmt.Sprintf("select count(*) from tasklist where done = 0 and duedate < %s;", tm)
+        now := time.Now().Format(time.RFC3339)
+        query = fmt.Sprintf("select count(*) from tasklist where done = 0 and duedate < %s;", now)
     }
     err = db.QueryRow(query).Scan(&count)
     return
 }
 
 func List(db *sql.DB, sw int) (tl TaskList, err error) {
-    query := "select * from tasklist where done = 0;"
+    var query string
+    switch sw {
+    case SW_OPEN:
+        query = "select * from tasklist where done = 0 order by duedate asc nulls last, created ;"
+    case SW_CLOSED:
+        query = "select * from tasklist where done = 1 order by completed desc;"
+    case SW_ALL:
+        query = `
+            select * 
+            from tasklist 
+            where done = 0
+            order by duedate asc nulls last, created desc;
+            select * 
+            from tasklist 
+            where done = 1
+            order by completed desc;
+        `
+    case SW_OVERDUE:
+        now := time.Now().Format(time.RFC3339)
+        query = fmt.Sprintf("select * from tasklist where duedate < %s;", now)
+    default:
+        query = "select * from tasklist where done = 0 order by duedate asc nulls last, created desc;"
+    }
 
     rows, err := db.Query(query)
     if err != nil {
@@ -93,19 +114,29 @@ func List(db *sql.DB, sw int) (tl TaskList, err error) {
     }
     defer rows.Close()
     
-    for rows.Next() {
-        var t Task
-        var due, comp sql.NullString
-        if err = rows.Scan(&t.id, &t.description, &t.done, &due, &t.created, &comp, &t.updated); err != nil {
-            return
+    for next := true; next; next = rows.NextResultSet() {
+        for rows.Next() {
+            var t Task
+            var due, comp sql.NullString
+            if err = rows.Scan(&t.id, &t.description, &t.done, &due, &t.created, &comp, &t.updated); err != nil {
+                return
+            }
+            if due.Valid {
+                duedate, err := time.Parse(time.RFC3339, due.String)
+                if err != nil {
+                    return tl, err
+                }
+                t.duedate = duedate 
+            }
+            if comp.Valid {
+                completed, err := time.Parse(time.RFC3339, comp.String)
+                if err != nil {
+                    return tl, err
+                }
+                t.completed = completed
+            }
+            tl = append(tl, t)
         }
-        if due.Valid {
-            t.duedate = due.String
-        }
-        if comp.Valid {
-            t.completed = comp.String
-        }
-        tl = append(tl, t)
     }
     if err = rows.Err(); err != nil {
         return
@@ -113,17 +144,17 @@ func List(db *sql.DB, sw int) (tl TaskList, err error) {
     return 
 }
 
-func (t Task) Complete(db *sql.DB) (err error) {
-    query := "update tasklist set done = 1, completed = ?, updated = ?;"
+func Complete(db *sql.DB, taskId int) (err error) {
+    query := "update tasklist set done = 1, completed = ?, updated = ? where id = ?;"
     tm := time.Now().Format(time.RFC3339)
-    _, err = db.Exec(query, tm, tm)
+    _, err = db.Exec(query, tm, tm, taskId)
     return err
 }
 
-func (t Task) Reopen(db *sql.DB) (err error) {
-    query := "update tasklist set done = 0, completed = null, updated = ?;"
+func Reopen(db *sql.DB, taskId int) (err error) {
+    query := "update tasklist set done = 0, completed = null, updated = ? where id = ?;"
     tm := time.Now().Format(time.RFC3339)
-    _, err = db.Exec(query, tm)
+    _, err = db.Exec(query, tm, taskId)
     return err
 }
 
