@@ -52,11 +52,11 @@ func main () {
             command = CMD_LIST
             correct = true
         }
-        if slices.Contains([]string{"do", "d"}, args[0]) && len(args) == 2 {
+        if slices.Contains([]string{"complete", "close", "do", "d"}, args[0]) && len(args) == 2 {
             command = CMD_COMPLETE
             correct = true
         }
-        if slices.Contains([]string{"undo", "u"}, args[0]) && len(args) == 2 {
+        if slices.Contains([]string{"reopen", "open", "undo", "u"}, args[0]) && len(args) == 2 {
             command = CMD_REOPEN
             correct = true
         }
@@ -87,6 +87,10 @@ func main () {
                 sw = SW_OVERDUE
                 correct = true
             }
+            if slices.Contains([]string{"--duedate", "--due", "-d"}, args[0]) {
+                sw = SW_DUE
+                correct = true
+            }
         }
         if slices.Contains([]int{CMD_COMPLETE, CMD_REOPEN}, command) && len(args) == 1 {
             correct = true
@@ -100,7 +104,7 @@ func main () {
         }
         if command == CMD_ADD && len(args) == 3 {
             for i, a := range args {
-                if slices.Contains([]string{"--due", "-d"}, a) {
+                if slices.Contains([]string{"--duedate", "--due", "-d"}, a) {
                     sw = SW_DUE
                     sw_arg = i + 1
                 }
@@ -195,6 +199,8 @@ func main () {
                 t_type = "All"
             case SW_OVERDUE:
                t_type = "Overdue"
+            case SW_DUE:
+                t_type = "Open with due date"
         }
 
         fmt.Printf("%s tasks: %d\n", t_type, count)
@@ -218,8 +224,6 @@ func main () {
         }
         fmt.Printf("End.\n")
     }
-    
-
 
     return
 }

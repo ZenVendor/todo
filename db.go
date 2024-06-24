@@ -96,7 +96,9 @@ func List(db *sql.DB, sw int) (tl TaskList, err error) {
             order by done, completed desc, duedate asc nulls last, created; 
         `
     case SW_OVERDUE:
-        query = fmt.Sprintf("select * from tasklist where duedate between '2000-01-01' and '%s';", time.Now().Format("2006-01-02"))
+        query = fmt.Sprintf("select * from tasklist where done = 0 and duedate between '2000-01-01' and '%s';", time.Now().Format("2006-01-02"))
+    case SW_DUE:
+        query = "select * from tasklist where done = 0 and duedate > '2000-01-01';"
     }
     
     rows, err := db.Query(query) 
