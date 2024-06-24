@@ -147,4 +147,10 @@ func Reopen(db *sql.DB, taskId int) (err error) {
     return err
 }
 
+func Delete(db *sql.DB, taskId int) (err error) {
+    query := "delete from tasklist where id = ?;"
+    _, err = db.Exec(query, taskId)
+    return err
+}
+
 

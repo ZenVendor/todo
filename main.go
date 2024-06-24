@@ -15,12 +15,15 @@ const CMD_LIST = 2
 const CMD_COMPLETE = 3
 const CMD_REOPEN = 4
 const CMD_HELP = 5
+const CMD_DELETE = 6
+const CMD_UPDATE = 7
 
 const SW_OPEN = 0
 const SW_CLOSED = 1
 const SW_OVERDUE = 2
 const SW_DUE = 3
 const SW_ALL = 4
+const SW_DESCRIPTION = 5
 	
 func main () {
 
@@ -54,7 +57,15 @@ func main () {
             command = CMD_REOPEN
             correct = true
         }
-        if slices.Contains([]string{"help", "--help", "-h", "h"}, args[0]) && len(args) == 1 {
+        if slices.Contains([]string{"update", "upd"}, args[0]) && len(args) > 1 {
+            command = CMD_UPDATE
+            correct = true
+        }
+        if slices.Contains([]string{"delete", "remove", "del", "rem"}, args[0]) && len(args) == 2 {
+            command = CMD_DELETE
+            correct = true
+        }
+        if slices.Contains([]string{"help", "--help", "-h", "h"}, args[0]) && len(args) == 2 {
             command = CMD_HELP
             correct = true
         }
@@ -71,7 +82,7 @@ func main () {
     }
 
     sw_arg := -1
-    num_arg := -1
+    taskId := -1
     if len(args) > 1 {
         args = os.Args[2:]
 
@@ -94,9 +105,9 @@ func main () {
                 correct = true
             }
         }
-        if slices.Contains([]int{CMD_COMPLETE, CMD_REOPEN}, command) && len(args) == 1 {
+        if slices.Contains([]int{CMD_COMPLETE, CMD_REOPEN, CMD_DELETE}, command) && len(args) == 1 {
             correct = true
-            num_arg, err = strconv.Atoi(args[0])
+            taskId, err = strconv.Atoi(args[0])
             if err != nil {
                 correct = false
             }
@@ -138,19 +149,27 @@ func main () {
     }
 
     if command == CMD_COMPLETE {
-        err := Complete(db, num_arg)
+        err := Complete(db, taskId)
         if err != nil {
             log.Fatal(err)
         }
-        fmt.Printf("Task %d has been completed\n", num_arg)
+        fmt.Printf("Task %d has been completed\n", taskId)
     }
 
     if command == CMD_REOPEN {
-        err := Reopen(db, num_arg)
+        err := Reopen(db, taskId)
         if err != nil {
             log.Fatal(err)
         }
-        fmt.Printf("Task %d has been reopened\n", num_arg)
+        fmt.Printf("Task %d has been reopened\n", taskId)
+    }
+
+    if command == CMD_DELETE {
+        err := Delete(db, taskId)
+        if err != nil {
+            log.Fatal(err)
+        }
+        fmt.Printf("Task %d has been deleted\n", taskId)
     }
 
     if command == CMD_ADD {

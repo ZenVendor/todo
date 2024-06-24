@@ -29,9 +29,15 @@ With add command, if there's a due date, the description can come first or last.
         --duedate | --due | -d
         --all | -a
 
+    update | change | upd | ch
+        --desc [description] 
+        --duedate | --due | -d [date]
+
     complete | close | do | d [task_id]
 
     reopen | open | undo | u [task_id]
+
+    delete | remove | del |rem [task_id]
 
 Examples:
     todo
