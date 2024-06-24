@@ -14,23 +14,17 @@ const CMD_ADD = 1
 const CMD_LIST = 2
 const CMD_COMPLETE = 3
 const CMD_REOPEN = 4
+const CMD_HELP = 5
 
 const SW_OPEN = 0
 const SW_CLOSED = 1
 const SW_OVERDUE = 2
 const SW_DUE = 3
 const SW_ALL = 4
-
-func PrintHelp() {
-    fmt.Printf("ToDo list\n\n")
-    fmt.Printf("Options:\n")
-    fmt.Printf("\tadd <description>\tAdd new task.\n")
-    fmt.Printf("\tlist [done|all]\tList active (default), done or all tasks.\n")
-    fmt.Printf("\tdo <task_id>\tMark task as done.\n")
-    fmt.Printf("\tundo <task_id>\tReactivate task.\n\n")
-}
-
+	
 func main () {
+
+    dbLocation := "./"
     
     args := os.Args[1:]
     command := CMD_LIST
@@ -60,8 +54,16 @@ func main () {
             command = CMD_REOPEN
             correct = true
         }
+        if slices.Contains([]string{"help", "--help", "-h", "h"}, args[0]) && len(args) == 1 {
+            command = CMD_HELP
+            correct = true
+        }
     }
     
+    if command == CMD_HELP {
+        PrintHelp()
+        return
+    }
     if !correct {
         fmt.Printf("Incorrect command: %s\n", args[0])
         PrintHelp()
@@ -121,7 +123,7 @@ func main () {
         return
     }
 
-    db, err := OpenDB("./")
+    db, err := OpenDB(dbLocation)
     if err != nil {
         log.Fatal(err)
     }

@@ -90,11 +90,7 @@ func List(db *sql.DB, sw int) (tl TaskList, err error) {
     case SW_CLOSED:
         query = "select * from tasklist where done = 1 order by completed desc;"
     case SW_ALL:
-        query = `
-            select * 
-            from tasklist 
-            order by done, completed desc, duedate asc nulls last, created; 
-        `
+        query = "select * from tasklist order by done, completed desc, created;"
     case SW_OVERDUE:
         query = fmt.Sprintf("select * from tasklist where done = 0 and duedate between '2000-01-01' and '%s';", time.Now().Format("2006-01-02"))
     case SW_DUE:
