@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+    _ "modernc.org/sqlite"
 )
 
 type Task struct {
@@ -50,7 +50,7 @@ func CreateTable(db *sql.DB) error {
 }
 
 func OpenDB(location string) (db *sql.DB, err error) {
-    db, err = sql.Open("sqlite3", fmt.Sprint(location, "todo.db"))
+    db, err = sql.Open("sqlite", fmt.Sprint(location, "todo.db"))
     if err != nil {
         return
     }

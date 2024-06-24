@@ -9,6 +9,7 @@ Started with flat files, switched to sqlite, maybe will add files later.
 		* open (default)
 		* closed
 		* all
+        * with due date
 		* overdue
 	* Print task count (to be used for prompt indicator)
 		* open (default)
@@ -27,6 +28,7 @@ Started with flat files, switched to sqlite, maybe will add files later.
 todo [command] [options] [argument]
 	
 Program can be executed without any additional argument (defaults to listing open tasks). Other than that a command must follow with optional switches or arguments.
+With add command, if there's a due date, the description can come first or last.
 
 	add | a [description]
 		--duedate | --due | -d [date]
