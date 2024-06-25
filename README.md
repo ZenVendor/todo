@@ -3,8 +3,21 @@
 While TODO apps are a dev learning meme, I suddenly found that I'm having trouble keeping track of things and a file doesn't work. Also, I've been playing with go, so it made sense.
 
 Started with flat files, switched to sqlite, maybe will add files later.
+
+## Config
+* Config dir: $HOME/.config/todo
+* Config file: $HOME/.config/todo/todo.yml
+* Default db file: $HOME/.config/todo/todo.db
+
+### Config parameters:
+* dblocation: $HOME/.config/todo/       db file folder
+* dbname: "todo"                        file name without extension
+* dateformat "2006-01-02"               go time date format
+
+
 1. **Current functions:**
 	* Add task with or without due date
+    * Update task description and/or due date
 	* List tasks (default)
 		* open (default)
 		* closed
@@ -17,42 +30,55 @@ Started with flat files, switched to sqlite, maybe will add files later.
 		* overdue
 	* Set task completed
 	* Reopen task
+    * Delete task
+
 2. **Planned functions**
+    * Priority
 	* Task groups (projects)
 	* Logging?
 	* File support csv/json/something else?
 
 ## Use
 
-todo [command] [options] [argument]
+todo [command] [id] [options] [argument]
 	
 Program can be executed without any additional argument (defaults to listing open tasks). Other than that a command must follow with optional switches or arguments.
 
-	add | a [description]
-		--duedate | --due | -d [date]
-		
-	list | l
-		--completed | --closed | -c
-		--overdue | -o
-		--duedate | --due | -d
-		--all | -a
-	
-	count | c
-		--completed | --closed | -c
-		--overdue | -o
-		--duedate | --due | -d
-		--all | -a
+    help | h | --help | -h
 
-	complete | close | do | d [task_id]
-	
-	reopen | open | undo | u [task_id]
+    add | a [description] [due]
+
+    count                     
+    --completed | -c
+    --overdue | -o
+    --all | -a
+
+    list | l                 
+        --completed | -c
+        --overdue | -o
+        --all | -a
+        
+    update | u [id]         
+        --desc [description] 
+        --due [date]
+
+    complete | c [task_id] 
+
+    reopen | open [task_id]
+
+    delete | del [task_id]
 
 ## Examples
 ```
 todo
-todo add "New task" -d "2024-08-13"
-todo l --overdue
-todo count -a 
+todo a "New task"
+todo add "New task" "2024-08-13"
+todo list --all
+todo l -o
+todo count -c
+todo update 15 --due "2024-08-13"
+todo c 12
 todo reopen 3
+todo del 5
 ```
 

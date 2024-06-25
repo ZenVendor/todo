@@ -3,23 +3,31 @@ package main
 import (
 	"fmt"
 	"log"
-    "os"
 	"time"
 )
 
+const VERSION = "0.6.0"
 
 func main () {
-    
-    dateFormat := "2006-01-02"
+    var conf Config
+    err := conf.Prepare()
+    if err != nil {
+        log.Fatal(err)
+    }
 
-    cmd, sw, vals, valid := ParseArgs(os.Args[1:], dateFormat)
+    cmd, sw, vals, valid := ParseArgs(conf.dateFormat)
 
     if !valid {
+        PrintVersion()
         PrintHelp()
         return
     }
+    if cmd == CMD_VERSION {
+        PrintVersion()
+        return
+    }
 
-    db, err := OpenDB("./")
+    db, err := conf.OpenDB()
     if err != nil {
         log.Fatal(err)
     }
@@ -75,7 +83,7 @@ func main () {
 
         fmt.Printf("Added task: %s\n", t.description)
         if t.due.Year() != 1 {
-            fmt.Printf("Due date: %s\n", t.due.Format(dateFormat))
+            fmt.Printf("Due date: %s\n", t.due.Format(conf.dateFormat))
         }
     }
    
@@ -113,10 +121,10 @@ func main () {
                 if t.due.Year() == 1 {
                     fmt.Printf("\t%s %d: %s\n", tStatus, t.id, t.description)
                 } else {
-                    fmt.Printf("\t%s %d: %s, due date: %s\n", tStatus, t.id, t.description, t.due.Format(dateFormat))
+                    fmt.Printf("\t%s %d: %s, due date: %s\n", tStatus, t.id, t.description, t.due.Format(conf.dateFormat))
                 }
             } else {
-                fmt.Printf("\t%s %d: %s, completed: %s\n", tStatus, t.id, t.description, t.completed.Format(dateFormat))
+                fmt.Printf("\t%s %d: %s, completed: %s\n", tStatus, t.id, t.description, t.completed.Format(conf.dateFormat))
             }
         }
         fmt.Printf("End.\n")

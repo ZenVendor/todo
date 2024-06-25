@@ -2,9 +2,12 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"slices"
 	"strconv"
 	"time"
+
+	"gopkg.in/yaml.v2"
 )
 
 const CMD_NONE = 0
@@ -15,6 +18,7 @@ const CMD_UPDATE = 4
 const CMD_DELETE = 5
 const CMD_REOPEN = 6
 const CMD_COMPLETE = 7
+const CMD_VERSION = 8
 
 const SW_NONE = 0
 const SW_OPEN = 1
@@ -22,12 +26,54 @@ const SW_CLOSED = 2
 const SW_ALL = 3
 const SW_OVERDUE = 4
 
+
 type Value struct {
     name string
     value interface{}
 }
 
 type Values []Value
+
+type Config struct {
+    dbLocation string   `yaml:"dblocation"`
+    dbName string       `yaml:"dbname"`
+    dateFormat string   `yaml:"dateformat"`
+}
+
+func (conf *Config) Prepare() (err error) {
+    home, ok := os.LookupEnv("HOME")
+    if !ok {
+        return fmt.Errorf("HOME environment variable not set.")
+    }
+
+    configDir := fmt.Sprintf("%s/.config/todo", home)
+    configFile := fmt.Sprintf("%s/todo.yml", configDir)
+
+    conf.dbLocation = "."
+    conf.dbName = "todo"
+    conf.dateFormat = "2006-01-02"
+
+    writeConf := fmt.Sprintf("dblocation: %s\ndbname: %s\ndateformat: %s", conf.dbLocation, conf.dbName, conf.dateFormat)
+
+    if _, err = os.Stat(configDir); os.IsNotExist(err) {
+        if err = os.MkdirAll(configDir, 0700); err != nil {
+            return
+        }
+    }
+    if _, err = os.Stat(configFile); os.IsNotExist(err) {
+        if err = os.WriteFile(configFile, []byte(writeConf), 0700); err != nil {
+            return
+        }
+    }
+    f, err := os.ReadFile(configFile)
+    if err != nil {
+        return
+    }
+
+    err = yaml.Unmarshal(f, &conf)
+
+    return
+}
 
 func (vs Values) ReadValue(name string) interface{} {
     idx := slices.IndexFunc(vs, func(v Value) bool {
@@ -39,8 +85,8 @@ func (vs Values) ReadValue(name string) interface{} {
     return vs[idx].value
 }
 
-func ParseArgs(args []string, dateFormat string) (cmd, sw int, values Values, valid bool) {
-
+func ParseArgs(dateFormat string) (cmd, sw int, values Values, valid bool) {
+    args := os.Args[1:]
     valid = false
 
     if len(args) == 0 {
@@ -50,6 +96,9 @@ func ParseArgs(args []string, dateFormat string) (cmd, sw int, values Values, va
     } else {
         if slices.Contains([]string{"help", "h", "--help", "-h"}, args[0]) {
             return CMD_NONE, SW_NONE, []Value{}, false 
+        }
+        if slices.Contains([]string{"version", "v", "--version", "-v"}, args[0]) {
+            return CMD_VERSION, SW_NONE, []Value{}, true 
         }
         if slices.Contains([]string{"count"}, args[0]) && slices.Contains([]int{1, 2}, len(args)) {
             cmd = CMD_COUNT
@@ -190,6 +239,9 @@ func ParseArgs(args []string, dateFormat string) (cmd, sw int, values Values, va
     return 
 }
 
+func PrintVersion() {
+    fmt.Printf("TODO CLI\nVersion: %s\n", VERSION)
+}
 
 func PrintHelp() {
     helpString := `

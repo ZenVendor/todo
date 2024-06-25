@@ -49,8 +49,8 @@ func CreateTable(db *sql.DB) error {
     return err
 }
 
-func OpenDB(location string) (db *sql.DB, err error) {
-    db, err = sql.Open("sqlite3", fmt.Sprint(location, "todo.db"))
+func (conf *Config) OpenDB() (db *sql.DB, err error) {
+    db, err = sql.Open("sqlite3", fmt.Sprintf("%s/%s.db", conf.dbLocation, conf.dbName))
     if err != nil {
         return
     }
