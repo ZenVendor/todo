@@ -49,7 +49,7 @@ func (conf *Config) Prepare() (err error) {
     configDir := fmt.Sprintf("%s/.config/todo", home)
     configFile := fmt.Sprintf("%s/todo.yml", configDir)
 
-    conf.dbLocation = "."
+    conf.dbLocation = configDir
     conf.dbName = "todo"
     conf.dateFormat = "2006-01-02"
 
@@ -240,7 +240,7 @@ func ParseArgs(dateFormat string) (cmd, sw int, values Values, valid bool) {
 }
 
 func PrintVersion() {
-    fmt.Printf("TODO CLI\nVersion: %s\n", VERSION)
+    fmt.Printf("TODO CLI\tversion: %s\n", VERSION)
 }
 
 func PrintHelp() {
@@ -257,12 +257,14 @@ Values following switches can be provided in any order.
     
     help | h | --help | -h                      display this help
 
+    version | v | --version | -v                display program version
+
     add | a [description] [due]                 optional due date format 2006-01-02
 
     count                                       defaults to active tasks
-    --completed | -c
-    --overdue | -o
-    --all | -a
+        --completed | -c
+        --overdue | -o
+        --all | -a
 
     list | l                                    defaults to active tasks
         --completed | -c

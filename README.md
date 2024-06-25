@@ -10,9 +10,9 @@ Started with flat files, switched to sqlite, maybe will add files later.
 * Default db file: $HOME/.config/todo/todo.db
 
 ### Config parameters:
-* dblocation: $HOME/.config/todo/       db file folder
-* dbname: "todo"                        file name without extension
-* dateformat "2006-01-02"               go time date format
+* dblocation: $HOME/.config/todo/
+* dbname: "todo"
+* dateformat "2006-01-02"
 
 
 1. **Current functions:**
