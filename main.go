@@ -102,25 +102,54 @@ func main () {
         fmt.Printf("%s tasks: %d\n", tType, count)
 
         for _, t := range tl {
-            t_status := "Open"
+            tStatus := "Open"
             if t.done == 0 && t.due.Year() != 1 && t.due.Before(time.Now()) {
-                t_status = "Overdue"
+                tStatus = "Overdue"
             }
             if t.done == 1 {
-                t_status = "Closed"
+                tStatus = "Closed"
             }
             if t.done == 0 {
                 if t.due.Year() == 1 {
-                    fmt.Printf("\t%s %d: %s\n", t_status, t.id, t.description)
+                    fmt.Printf("\t%s %d: %s\n", tStatus, t.id, t.description)
                 } else {
-                    fmt.Printf("\t%s %d: %s, due date: %s\n", t_status, t.id, t.description, t.due.Format(dateFormat))
+                    fmt.Printf("\t%s %d: %s, due date: %s\n", tStatus, t.id, t.description, t.due.Format(dateFormat))
                 }
             } else {
-                fmt.Printf("\t%s %d: %s, completed: %s\n", t_status, t.id, t.description, t.completed.Format(dateFormat))
+                fmt.Printf("\t%s %d: %s, completed: %s\n", tStatus, t.id, t.description, t.completed.Format(dateFormat))
             }
         }
         fmt.Printf("End.\n")
     }
+    
+    if cmd == CMD_UPDATE {
+        var t Task
 
+        taskId := vals.ReadValue("id").(int)
+        t, err = Select(db, taskId)
+        if err != nil {
+            log.Fatal(err)
+        }
+
+        if vals.ReadValue("description") != nil {
+            t.description = vals.ReadValue("description").(string)
+        }
+        if vals.ReadValue("due") != nil {
+            t.due = vals.ReadValue("due").(time.Time)
+        }
+        t.updated = time.Now()
+        if err = t.Update(db); err != nil {
+            log.Fatal(err)
+        }
+        
+        var updString string
+        for i, v := range vals {
+            if i != 0 {
+                updString += ", "
+            }
+            updString += v.name
+        }
+        fmt.Printf("Updated %s in task %d\n", updString, t.id)
+    }
     return
 }

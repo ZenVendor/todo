@@ -131,15 +131,15 @@ func List(db *sql.DB, sw int) (tl TaskList, err error) {
 
 func Complete(db *sql.DB, taskId int) (err error) {
     query := "update tasklist set done = 1, completed = ?, updated = ? where id = ?;"
-    tm := time.Now().Format(time.RFC3339)
-    _, err = db.Exec(query, tm, tm, taskId)
+    now := time.Now().Format(time.RFC3339)
+    _, err = db.Exec(query, now, now, taskId)
     return err
 }
 
 func Reopen(db *sql.DB, taskId int) (err error) {
     query := "update tasklist set done = 0, completed = null, updated = ? where id = ?;"
-    tm := time.Now().Format(time.RFC3339)
-    _, err = db.Exec(query, tm, taskId)
+    now := time.Now().Format(time.RFC3339)
+    _, err = db.Exec(query, now, taskId)
     return err
 }
 
@@ -149,3 +149,13 @@ func Delete(db *sql.DB, taskId int) (err error) {
     return err
 }
 
+func Select(db *sql.DB, taskId int) (t Task, err error) {
+    query := "select id, description, due from tasklist where id = ?;"
+    err = db.QueryRow(query, taskId).Scan(&t.id, &t.description, &t.due)
+    return
+}
+func (t Task) Update(db *sql.DB) (err error) {
+    query := "update tasklist set description = ?, due = ?, updated = ? where id = ?;"
+    _, err = db.Exec(query, t.description, t.due, t.updated, t.id)
+    return err
+}
