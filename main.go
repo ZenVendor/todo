@@ -3,143 +3,28 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"slices"
-	"strconv"
+    "os"
 	"time"
 )
 
-const CMD_COUNT = 0
-const CMD_ADD = 1
-const CMD_LIST = 2
-const CMD_COMPLETE = 3
-const CMD_REOPEN = 4
-const CMD_HELP = 5
-const CMD_DELETE = 6
-const CMD_UPDATE = 7
 
-const SW_OPEN = 0
-const SW_CLOSED = 1
-const SW_OVERDUE = 2
-const SW_DUE = 3
-const SW_ALL = 4
-const SW_DESCRIPTION = 5
-	
 func main () {
-
-    dbLocation := "./"
     
-    args := os.Args[1:]
-    command := CMD_LIST
-    sw := SW_OPEN
-    correct := true
-    var err error
+    dateFormat := "2006-01-02"
 
-    if len(args) != 0 {
-        correct = false
-        if slices.Contains([]string{"count", "c"}, args[0]) {
-            command = CMD_COUNT
-            correct = true
-        }
-        if slices.Contains([]string{"add", "a"}, args[0]) && len(args) > 1 {
-            command = CMD_ADD
-            correct = true
-        }
-        if slices.Contains([]string{"list", "l"}, args[0]) {
-            command = CMD_LIST
-            correct = true
-        }
-        if slices.Contains([]string{"complete", "close", "do", "d"}, args[0]) && len(args) == 2 {
-            command = CMD_COMPLETE
-            correct = true
-        }
-        if slices.Contains([]string{"reopen", "open", "undo", "u"}, args[0]) && len(args) == 2 {
-            command = CMD_REOPEN
-            correct = true
-        }
-        if slices.Contains([]string{"update", "upd"}, args[0]) && len(args) > 1 {
-            command = CMD_UPDATE
-            correct = true
-        }
-        if slices.Contains([]string{"delete", "remove", "del", "rem"}, args[0]) && len(args) == 2 {
-            command = CMD_DELETE
-            correct = true
-        }
-        if slices.Contains([]string{"help", "--help", "-h", "h"}, args[0]) && len(args) == 2 {
-            command = CMD_HELP
-            correct = true
-        }
-    }
-    
-    if command == CMD_HELP {
-        PrintHelp()
-        return
-    }
-    if !correct {
-        fmt.Printf("Incorrect command: %s\n", args[0])
+    cmd, sw, vals, valid := ParseArgs(os.Args[1:], dateFormat)
+
+    if !valid {
         PrintHelp()
         return
     }
 
-    sw_arg := -1
-    taskId := -1
-    if len(args) > 1 {
-        args = os.Args[2:]
-
-        correct = false
-        if slices.Contains([]int{CMD_COUNT, CMD_LIST}, command) && len(args) == 1 {
-            if slices.Contains([]string{"--all", "-a"}, args[0]) {
-                sw = SW_ALL
-                correct = true
-            }
-            if slices.Contains([]string{"--completed", "--closed", "-c"}, args[0]) {
-                sw = SW_CLOSED
-                correct = true
-            }
-            if slices.Contains([]string{"--overdue", "-o"}, args[0]) {
-                sw = SW_OVERDUE
-                correct = true
-            }
-            if slices.Contains([]string{"--duedate", "--due", "-d"}, args[0]) {
-                sw = SW_DUE
-                correct = true
-            }
-        }
-        if slices.Contains([]int{CMD_COMPLETE, CMD_REOPEN, CMD_DELETE}, command) && len(args) == 1 {
-            correct = true
-            taskId, err = strconv.Atoi(args[0])
-            if err != nil {
-                correct = false
-            }
-        }
-        if command == CMD_ADD && len(args) == 1 {
-                correct = true
-        }
-        if command == CMD_ADD && len(args) == 3 {
-            for i, a := range args {
-                if slices.Contains([]string{"--duedate", "--due", "-d"}, a) {
-                    sw = SW_DUE
-                    sw_arg = i + 1
-                }
-            }
-            if sw_arg > 0 {
-                correct = true
-            }
-        }
-    }
-
-    if !correct {
-        fmt.Printf("Incorrect arguments: %v\n", args)
-        PrintHelp()
-        return
-    }
-
-    db, err := OpenDB(dbLocation)
+    db, err := OpenDB("./")
     if err != nil {
         log.Fatal(err)
     }
 
-    if command == CMD_COUNT {
+    if cmd == CMD_COUNT {
         count, err := Count(db, sw)
         if err != nil {
             log.Fatal(err)
@@ -148,7 +33,8 @@ func main () {
         return
     }
 
-    if command == CMD_COMPLETE {
+    if cmd == CMD_COMPLETE {
+        taskId := vals.ReadValue("id").(int)
         err := Complete(db, taskId)
         if err != nil {
             log.Fatal(err)
@@ -156,7 +42,8 @@ func main () {
         fmt.Printf("Task %d has been completed\n", taskId)
     }
 
-    if command == CMD_REOPEN {
+    if cmd == CMD_REOPEN {
+        taskId := vals.ReadValue("id").(int)
         err := Reopen(db, taskId)
         if err != nil {
             log.Fatal(err)
@@ -164,44 +51,35 @@ func main () {
         fmt.Printf("Task %d has been reopened\n", taskId)
     }
 
-    if command == CMD_DELETE {
+    if cmd == CMD_DELETE {
+        taskId := vals.ReadValue("id").(int)
         err := Delete(db, taskId)
         if err != nil {
             log.Fatal(err)
         }
-        fmt.Printf("Task %d has been deleted\n", taskId)
+        fmt.Printf("Task %d has been reopened\n", taskId)
     }
 
-    if command == CMD_ADD {
+    if cmd == CMD_ADD {
         var t Task
-
-        t.description = args[0]
+        t.description = vals.ReadValue("description").(string)
+        if vals.ReadValue("due") != nil {
+            t.due = vals.ReadValue("due").(time.Time)
+        }      
         t.created = time.Now()
         t.updated = time.Now()
-
-        if len(args) == 3 {
-            if sw == SW_DUE {   
-                duedate, err := time.Parse("2006-01-02", args[sw_arg])
-                if err != nil {
-                    log.Fatal(err)
-                }
-                t.duedate = duedate
-                if sw_arg == 1 {
-                    t.description = args[2]
-                }
-            }
-        }
 
         if err = t.AddTask(db); err != nil {
             log.Fatal(err)
         }
+
         fmt.Printf("Added task: %s\n", t.description)
-        if sw == SW_DUE {
-            fmt.Printf("Due date: %s\n", t.duedate.Format("2006-01-02"))
+        if t.due.Year() != 1 {
+            fmt.Printf("Due date: %s\n", t.due.Format(dateFormat))
         }
     }
    
-    if command == CMD_LIST {
+    if cmd == CMD_LIST {
         count, err := Count(db, sw)
         if err != nil {
             log.Fatal(err)
@@ -210,37 +88,35 @@ func main () {
         if err != nil {
             log.Fatal(err)
         }
-        var t_type string 
+        var tType string 
         switch sw {
             case SW_OPEN:
-                t_type = "Open"
+                tType = "Open"
             case SW_CLOSED:
-                t_type = "Closed"
+                tType = "Closed"
             case SW_ALL:
-                t_type = "All"
+                tType = "All"
             case SW_OVERDUE:
-               t_type = "Overdue"
-            case SW_DUE:
-                t_type = "Open with due date"
+               tType = "Overdue"
         }
+        fmt.Printf("%s tasks: %d\n", tType, count)
 
-        fmt.Printf("%s tasks: %d\n", t_type, count)
         for _, t := range tl {
             t_status := "Open"
-            if t.done == 0 && t.duedate.Year() != 1 && t.duedate.Before(time.Now()) {
+            if t.done == 0 && t.due.Year() != 1 && t.due.Before(time.Now()) {
                 t_status = "Overdue"
             }
             if t.done == 1 {
                 t_status = "Closed"
             }
             if t.done == 0 {
-                if t.duedate.Year() == 1 {
+                if t.due.Year() == 1 {
                     fmt.Printf("\t%s %d: %s\n", t_status, t.id, t.description)
                 } else {
-                    fmt.Printf("\t%s %d: %s, due date: %s\n", t_status, t.id, t.description, t.duedate.Format("2006-01-02"))
+                    fmt.Printf("\t%s %d: %s, due date: %s\n", t_status, t.id, t.description, t.due.Format(dateFormat))
                 }
             } else {
-                fmt.Printf("\t%s %d: %s, completed: %s\n", t_status, t.id, t.description, t.completed.Format("2006-01-02"))
+                fmt.Printf("\t%s %d: %s, completed: %s\n", t_status, t.id, t.description, t.completed.Format(dateFormat))
             }
         }
         fmt.Printf("End.\n")

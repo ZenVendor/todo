@@ -6,14 +6,14 @@ import (
 	"log"
 	"time"
 
-    _ "modernc.org/sqlite"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type Task struct {
     id int
     description string
     done int
-    duedate time.Time
+    due time.Time
     created time.Time
     completed time.Time
     updated time.Time
@@ -38,7 +38,7 @@ func CreateTable(db *sql.DB) error {
             id integer not null primary key,
             description text not null,
             done integer not null,
-            duedate datetime,
+            due datetime,
             created datetime not null,
             completed datetime,
             updated datetime not null
@@ -50,7 +50,7 @@ func CreateTable(db *sql.DB) error {
 }
 
 func OpenDB(location string) (db *sql.DB, err error) {
-    db, err = sql.Open("sqlite", fmt.Sprint(location, "todo.db"))
+    db, err = sql.Open("sqlite3", fmt.Sprint(location, "todo.db"))
     if err != nil {
         return
     }
@@ -63,8 +63,8 @@ func OpenDB(location string) (db *sql.DB, err error) {
 }
 
 func (t Task) AddTask(db *sql.DB) (err error) {
-    query := "insert into tasklist (description, done, duedate, created, updated) values (?, ?, ?, ?, ?);"
-    _, err = db.Exec(query, t.description, t.done, t.duedate, t.created, t.updated)
+    query := "insert into tasklist (description, done, due, created, updated) values (?, ?, ?, ?, ?);"
+    _, err = db.Exec(query, t.description, t.done, t.due, t.created, t.updated)
     return err
 }
     
@@ -76,7 +76,7 @@ func Count(db *sql.DB, sw int) (count int, err error) {
     case SW_CLOSED: 
         query = "select count(*) from tasklist where done = 1;"
     case SW_OVERDUE:
-        query = fmt.Sprintf("select count(*) from tasklist where done = 0 and duedate between '2000-01-01' and '%s';", time.Now())
+        query = fmt.Sprintf("select count(*) from tasklist where done = 0 and due between '2000-01-01' and '%s';", time.Now())
     }
     err = db.QueryRow(query).Scan(&count)
     return
@@ -86,15 +86,13 @@ func List(db *sql.DB, sw int) (tl TaskList, err error) {
     var query string
     switch sw {
     case SW_OPEN:
-        query = "select * from tasklist where done = 0 order by duedate asc nulls last, created ;"
+        query = "select * from tasklist where done = 0 order by due asc nulls last, created ;"
     case SW_CLOSED:
         query = "select * from tasklist where done = 1 order by completed desc;"
     case SW_ALL:
-        query = "select * from tasklist order by done, completed desc, created;"
+        query = "select * from tasklist order by done, completed desc, due asc nulls last, created;"
     case SW_OVERDUE:
-        query = fmt.Sprintf("select * from tasklist where done = 0 and duedate between '2000-01-01' and '%s';", time.Now().Format("2006-01-02"))
-    case SW_DUE:
-        query = "select * from tasklist where done = 0 and duedate > '2000-01-01';"
+        query = fmt.Sprintf("select * from tasklist where done = 0 and due between '2000-01-01' and '%s';", time.Now().Format("2006-01-02"))
     }
     
     rows, err := db.Query(query) 
@@ -103,29 +101,27 @@ func List(db *sql.DB, sw int) (tl TaskList, err error) {
     }
     defer rows.Close()
     
-    for next := true; next; next = rows.NextResultSet() {
-        for rows.Next() {
-            var t Task
-            var due, comp sql.NullString
-            if err = rows.Scan(&t.id, &t.description, &t.done, &due, &t.created, &comp, &t.updated); err != nil {
-                return
-            }
-            if due.Valid {
-                duedate, err := time.Parse(time.RFC3339, due.String)
-                if err != nil {
-                    return tl, err
-                }
-                t.duedate = duedate 
-            }
-            if comp.Valid {
-                completed, err := time.Parse(time.RFC3339, comp.String)
-                if err != nil {
-                    return tl, err
-                }
-                t.completed = completed
-            }
-            tl = append(tl, t)
+    for rows.Next() {
+        var t Task
+        var due, comp sql.NullString
+        if err = rows.Scan(&t.id, &t.description, &t.done, &due, &t.created, &comp, &t.updated); err != nil {
+            return
         }
+        if due.Valid {
+            duedate, err := time.Parse(time.RFC3339, due.String)
+            if err != nil {
+                return tl, err
+            }
+            t.due = duedate 
+        }
+        if comp.Valid {
+            completed, err := time.Parse(time.RFC3339, comp.String)
+            if err != nil {
+                return tl, err
+            }
+            t.completed = completed
+        }
+        tl = append(tl, t)
     }
     if err = rows.Err(); err != nil {
         return
@@ -152,5 +148,4 @@ func Delete(db *sql.DB, taskId int) (err error) {
     _, err = db.Exec(query, taskId)
     return err
 }
-
 
