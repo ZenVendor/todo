@@ -1,28 +1,30 @@
-package main
+package todo
 
 import (
 	"fmt"
 	"log"
 	"time"
+
+    "github.com/ZenVendor/todo/internal/functions"
 )
 
 const VERSION = "0.6.2"
 
 func main () {
-    var conf Config
+    var conf functions.Config
     err := conf.Prepare()
     if err != nil {
         log.Fatal(err)
     }
 
-    cmd, sw, vals, valid := ParseArgs(conf.dateFormat)
+    cmd, sw, vals, valid := functions.ParseArgs(conf.dateFormat)
 
     if !valid {
         PrintVersion()
         PrintHelp()
         return
     }
-    if cmd == CMD_VERSION {
+    if cmd == functions.CMD_VERSION {
         PrintVersion()
         return
     }
@@ -33,8 +35,8 @@ func main () {
     }
     defer db.Close()
 
-    if cmd == CMD_COUNT {
-        count, err := Count(db, sw)
+    if cmd == functions.CMD_COUNT {
+        count, err := functions.Count(db, sw)
         if err != nil {
             log.Fatal(err)
         }
@@ -42,35 +44,35 @@ func main () {
         return
     }
 
-    if cmd == CMD_COMPLETE {
+    if cmd == functions.CMD_COMPLETE {
         taskId := vals.ReadValue("id").(int)
-        err := Complete(db, taskId)
+        err := functions.Complete(db, taskId)
         if err != nil {
             log.Fatal(err)
         }
         fmt.Printf("Task %d has been completed\n", taskId)
     }
 
-    if cmd == CMD_REOPEN {
+    if cmd == functions.CMD_REOPEN {
         taskId := vals.ReadValue("id").(int)
-        err := Reopen(db, taskId)
+        err := functions.Reopen(db, taskId)
         if err != nil {
             log.Fatal(err)
         }
         fmt.Printf("Task %d has been reopened\n", taskId)
     }
 
-    if cmd == CMD_DELETE {
+    if cmd == functions.CMD_DELETE {
         taskId := vals.ReadValue("id").(int)
-        err := Delete(db, taskId)
+        err := functions.Delete(db, taskId)
         if err != nil {
             log.Fatal(err)
         }
         fmt.Printf("Task %d has been deleted\n", taskId)
     }
 
-    if cmd == CMD_ADD {
-        var t Task
+    if cmd == functions.CMD_ADD {
+        var t functions.Task
         t.description = vals.ReadValue("description").(string)
         if vals.ReadValue("due") != nil {
             t.due = vals.ReadValue("due").(time.Time)
@@ -88,24 +90,24 @@ func main () {
         }
     }
    
-    if cmd == CMD_LIST {
-        count, err := Count(db, sw)
+    if cmd == functions.CMD_LIST {
+        count, err := functions.Count(db, sw)
         if err != nil {
             log.Fatal(err)
         }
-        tl, err := List(db, sw)
+        tl, err := functions.List(db, sw)
         if err != nil {
             log.Fatal(err)
         }
         var tType string 
         switch sw {
-            case SW_OPEN:
+            case functions.SW_OPEN:
                 tType = "Open"
-            case SW_CLOSED:
+            case functions.SW_CLOSED:
                 tType = "Closed"
-            case SW_ALL:
+            case functions.SW_ALL:
                 tType = "All"
-            case SW_OVERDUE:
+            case functions.SW_OVERDUE:
                tType = "Overdue"
         }
         fmt.Printf("%s tasks: %d\n", tType, count)
@@ -131,11 +133,11 @@ func main () {
         fmt.Printf("End.\n")
     }
     
-    if cmd == CMD_UPDATE {
-        var t Task
+    if cmd == functions.CMD_UPDATE {
+        var t functions.Task
 
         taskId := vals.ReadValue("id").(int)
-        t, err = Select(db, taskId)
+        t, err = functions.Select(db, taskId)
         if err != nil {
             log.Fatal(err)
         }
@@ -161,4 +163,63 @@ func main () {
         fmt.Printf("Updated %s in task %d\n", updString, t.id)
     }
     return
+}
+
+func PrintVersion() {
+    fmt.Printf("TODO CLI\tversion: %s\n", VERSION)
+}
+
+func PrintHelp() {
+    helpString := `
+Usage: 
+    todo [command] [id] [option] [argument]
+
+Without arguments defaults to listing active tasks.
+Frequently used commands have single-letter aliases.
+In ADD command, description is required and must be provided first.
+In commands that require it, task ID must follow the command.
+Values following switches can be provided in any order.
+
+    
+    help | h | --help | -h                      display this help
+
+    version | v | --version | -v                display program version
+
+    add | a [description] [due]                 optional due date format 2006-01-02
+
+    count                                       defaults to active tasks
+        --completed | -c
+        --overdue | -o
+        --all | -a
+
+    list | l                                    defaults to active tasks
+        --completed | -c
+        --overdue | -o
+        --all | -a
+        
+    update | u [id]                             update description, due date, or both. invalid date value removes due date
+        --desc [description] 
+        --due [date]
+
+    complete | c [task_id]                      set task completed
+
+    reopen | open [task_id]                     reopen completed task
+
+    delete | del [task_id]                      delete task
+
+Examples:
+    todo
+    todo a "New task"
+    todo add "New task" "2024-08-13"
+    todo list --all
+    todo l -o
+    todo count -c
+    todo update 15 --due "2024-08-13"
+    todo u 10 --due -
+    todo c 12
+    todo reopen 3
+    todo del 5
+
+`
+    fmt.Println(helpString)
 }

@@ -1,12 +1,15 @@
-package main
+package functions
 
 import (
+	"database/sql"
 	"fmt"
+	"log"
 	"os"
 	"slices"
 	"strconv"
 	"time"
 
+	_ "github.com/mattn/go-sqlite3"
 	"gopkg.in/yaml.v2"
 )
 
@@ -26,12 +29,21 @@ const SW_CLOSED = 2
 const SW_ALL = 3
 const SW_OVERDUE = 4
 
+type Task struct {
+    id int
+    description string
+    done int
+    due time.Time
+    created time.Time
+    completed time.Time
+    updated time.Time
+}
+type TaskList []Task
 
 type Value struct {
     name string
     value interface{}
 }
-
 type Values []Value
 
 type Config struct {
@@ -73,6 +85,19 @@ func (conf *Config) Prepare() (err error) {
     err = yaml.Unmarshal(f, &conf)
 
     return
+}
+
+func (conf *Config) OpenDB() (db *sql.DB, err error) {
+    db, err = sql.Open("sqlite3", fmt.Sprintf("%s/%s.db", conf.dbLocation, conf.dbName))
+    if err != nil {
+        return
+    }
+    if !TableExists(db) {
+        if err = CreateTable(db); err != nil {
+            return
+        }
+    }
+    return 
 }
 
 func (vs Values) ReadValue(name string) interface{} {
@@ -236,61 +261,129 @@ func ParseArgs(dateFormat string) (cmd, sw int, values Values, valid bool) {
     return 
 }
 
-func PrintVersion() {
-    fmt.Printf("TODO CLI\tversion: %s\n", VERSION)
+func TableExists(db *sql.DB) bool {
+    var rowId int
+    if err := db.QueryRow("select rowid from sqlite_schema where type = 'table' and tbl_name = 'tasklist';").Scan(&rowId); err != nil {
+        if err == sql.ErrNoRows {
+            return false
+        } else {
+            log.Fatal(err)
+        }
+    }
+    return true
+}
+    
+func CreateTable(db *sql.DB) error {
+    query := `
+        create table tasklist (
+            id integer not null primary key,
+            description text not null,
+            done integer not null,
+            due datetime,
+            created datetime not null,
+            completed datetime,
+            updated datetime not null
+        );
+    `
+    log.Println("Creating table.")
+    _, err := db.Exec(query)
+    return err
 }
 
-func PrintHelp() {
-    helpString := `
-Usage: 
-    todo [command] [id] [option] [argument]
-
-Without arguments defaults to listing active tasks.
-Frequently used commands have single-letter aliases.
-In ADD command, description is required and must be provided first.
-In commands that require it, task ID must follow the command.
-Values following switches can be provided in any order.
-
+func (t Task) AddTask(db *sql.DB) (err error) {
+    query := "insert into tasklist (description, done, due, created, updated) values (?, ?, ?, ?, ?);"
+    _, err = db.Exec(query, t.description, t.done, t.due, t.created, t.updated)
+    return err
+}
     
-    help | h | --help | -h                      display this help
+func Count(db *sql.DB, sw int) (count int, err error) {
+    query := "select count(*) from tasklist where done = 0;"
+    switch sw {
+    case functions.SW_ALL:
+        query = "select count(*) from tasklist;"
+    case functions.SW_CLOSED: 
+        query = "select count(*) from tasklist where done = 1;"
+    case functions.SW_OVERDUE:
+        query = fmt.Sprintf("select count(*) from tasklist where done = 0 and due between '2000-01-01' and '%s';", time.Now())
+    }
+    err = db.QueryRow(query).Scan(&count)
+    return
+}
 
-    version | v | --version | -v                display program version
+func List(db *sql.DB, sw int) (tl TaskList, err error) {
+    var query string
+    switch sw {
+    case functions.SW_OPEN:
+        query = "select * from tasklist where done = 0 order by due asc nulls last, created ;"
+    case functions.SW_CLOSED:
+        query = "select * from tasklist where done = 1 order by completed desc;"
+    case functions.SW_ALL:
+        query = "select * from tasklist order by done, completed desc, due asc nulls last, created;"
+    case functions.SW_OVERDUE:
+        query = fmt.Sprintf("select * from tasklist where done = 0 and due between '2000-01-01' and '%s';", time.Now().Format("2006-01-02"))
+    }
+    
+    rows, err := db.Query(query) 
+    if err != nil {
+        return 
+    }
+    defer rows.Close()
+    
+    for rows.Next() {
+        var t Task
+        var due, comp sql.NullString
+        if err = rows.Scan(&t.id, &t.description, &t.done, &due, &t.created, &comp, &t.updated); err != nil {
+            return
+        }
+        if due.Valid {
+            duedate, err := time.Parse(time.RFC3339, due.String)
+            if err != nil {
+                return tl, err
+            }
+            t.due = duedate 
+        }
+        if comp.Valid {
+            completed, err := time.Parse(time.RFC3339, comp.String)
+            if err != nil {
+                return tl, err
+            }
+            t.completed = completed
+        }
+        tl = append(tl, t)
+    }
+    if err = rows.Err(); err != nil {
+        return
+    }
+    return 
+}
 
-    add | a [description] [due]                 optional due date format 2006-01-02
+func Complete(db *sql.DB, taskId int) (err error) {
+    query := "update tasklist set done = 1, completed = ?, updated = ? where id = ?;"
+    now := time.Now().Format(time.RFC3339)
+    _, err = db.Exec(query, now, now, taskId)
+    return err
+}
 
-    count                                       defaults to active tasks
-        --completed | -c
-        --overdue | -o
-        --all | -a
+func Reopen(db *sql.DB, taskId int) (err error) {
+    query := "update tasklist set done = 0, completed = null, updated = ? where id = ?;"
+    now := time.Now().Format(time.RFC3339)
+    _, err = db.Exec(query, now, taskId)
+    return err
+}
 
-    list | l                                    defaults to active tasks
-        --completed | -c
-        --overdue | -o
-        --all | -a
-        
-    update | u [id]                             update description, due date, or both. invalid date value removes due date
-        --desc [description] 
-        --due [date]
+func Delete(db *sql.DB, taskId int) (err error) {
+    query := "delete from tasklist where id = ?;"
+    _, err = db.Exec(query, taskId)
+    return err
+}
 
-    complete | c [task_id]                      set task completed
-
-    reopen | open [task_id]                     reopen completed task
-
-    delete | del [task_id]                      delete task
-
-Examples:
-    todo
-    todo a "New task"
-    todo add "New task" "2024-08-13"
-    todo list --all
-    todo l -o
-    todo count -c
-    todo update 15 --due "2024-08-13"
-    todo u 10 --due -
-    todo c 12
-    todo reopen 3
-    todo del 5
-
-`
-    fmt.Println(helpString)
+func Select(db *sql.DB, taskId int) (t Task, err error) {
+    query := "select id, description, due from tasklist where id = ?;"
+    err = db.QueryRow(query, taskId).Scan(&t.id, &t.description, &t.due)
+    return
+}
+func (t Task) Update(db *sql.DB) (err error) {
+    query := "update tasklist set description = ?, due = ?, updated = ? where id = ?;"
+    _, err = db.Exec(query, t.description, t.due, t.updated, t.id)
+    return err
 }

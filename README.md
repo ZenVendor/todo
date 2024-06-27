@@ -1,10 +1,13 @@
 
 # TODO CLI app
-While TODO apps are a dev learning meme, I suddenly found that I'm having trouble keeping track of things and a file doesn't work. Also, I've been playing with go, so it made sense.
+While TODO apps are a dev learning meme, I found that I'm having trouble keeping track of things. 
+Also, I've been trying to find a meaningful project for a beginner, so it made sense.
 
-Started with flat files, switched to sqlite, maybe will add files later.
+This is a simple command line TODO program.
+It does one thing at a time. 
 
 ## Config
+I'm not sure it needs a config file, but it currently has one, with db location, db name and date format.
 * Config dir: $HOME/.config/todo
 * Config file: $HOME/.config/todo/todo.yml
 * Default db file: $HOME/.config/todo/todo.db
@@ -36,8 +39,7 @@ Started with flat files, switched to sqlite, maybe will add files later.
 2. **Planned functions**
     * Priority
 	* Task groups (projects)
-	* Logging?
-	* File support csv/json/something else?
+	* File support - csv/json/something else?
 
 ## Use
 

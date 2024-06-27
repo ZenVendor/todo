@@ -1,4 +1,6 @@
 *.db
 *.csv
-todo
 doc/
+build/
+vendor/
+go.sum
