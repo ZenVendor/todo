@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-const VERSION = "0.6.1"
+const VERSION = "0.6.2"
 
 func main () {
     var conf Config
@@ -31,6 +31,7 @@ func main () {
     if err != nil {
         log.Fatal(err)
     }
+    defer db.Close()
 
     if cmd == CMD_COUNT {
         count, err := Count(db, sw)
@@ -65,7 +66,7 @@ func main () {
         if err != nil {
             log.Fatal(err)
         }
-        fmt.Printf("Task %d has been reopened\n", taskId)
+        fmt.Printf("Task %d has been deleted\n", taskId)
     }
 
     if cmd == CMD_ADD {

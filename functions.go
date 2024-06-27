@@ -194,12 +194,11 @@ func ParseArgs(dateFormat string) (cmd, sw int, values Values, valid bool) {
                     if "--due" == args[1] {
                         dd, err := time.Parse(dateFormat, args[2])
                         if err != nil {
-                            valid = false
-                        } else {
-                            values = append(values, Value{"id", taskId})
-                            values = append(values, Value{"due", dd})
-                            valid = true
+                            dd, _ = time.Parse(dateFormat, "0001-01-01")
                         }
+                        values = append(values, Value{"id", taskId})
+                        values = append(values, Value{"due", dd})
+                        valid = true
                     }
                 }
             }
@@ -213,24 +212,22 @@ func ParseArgs(dateFormat string) (cmd, sw int, values Values, valid bool) {
                     if "--desc" == args[1] && "--due" == args[3] {
                         dd, err := time.Parse(dateFormat, args[4])
                         if err != nil {
-                            valid = false
-                        } else {
-                            values = append(values, Value{"id", taskId})
-                            values = append(values, Value{"description", args[2]})
-                            values = append(values, Value{"due", dd})
-                            valid = true
+                            dd, _ = time.Parse(dateFormat, "0001-01-01")
                         }
+                        values = append(values, Value{"id", taskId})
+                        values = append(values, Value{"description", args[2]})
+                        values = append(values, Value{"due", dd})
+                        valid = true
                     }
                     if "--desc" == args[3] && "--due" == args[1] {
                         dd, err := time.Parse(dateFormat, args[2])
                         if err != nil {
-                            valid = false
-                        } else {
-                            values = append(values, Value{"id", taskId})
-                            values = append(values, Value{"description", args[4]})
-                            values = append(values, Value{"due", dd})
-                            valid = true
+                            dd, _ = time.Parse(dateFormat, "0001-01-01")
                         }
+                        values = append(values, Value{"id", taskId})
+                        values = append(values, Value{"description", args[4]})
+                        values = append(values, Value{"due", dd})
+                        valid = true
                     }
                 }
             }
@@ -271,7 +268,7 @@ Values following switches can be provided in any order.
         --overdue | -o
         --all | -a
         
-    update | u [id]                             update description, due date, or both
+    update | u [id]                             update description, due date, or both. invalid date value removes due date
         --desc [description] 
         --due [date]
 
@@ -289,6 +286,7 @@ Examples:
     todo l -o
     todo count -c
     todo update 15 --due "2024-08-13"
+    todo u 10 --due -
     todo c 12
     todo reopen 3
     todo del 5

@@ -18,6 +18,7 @@ Started with flat files, switched to sqlite, maybe will add files later.
 1. **Current functions:**
 	* Add task with or without due date
     * Update task description and/or due date
+    * Remove due date
 	* List tasks (default)
 		* open (default)
 		* closed
@@ -76,7 +77,8 @@ todo add "New task" "2024-08-13"
 todo list --all
 todo l -o
 todo count -c
-todo update 15 --due "2024-08-13"
+todo update 15 --desc "Changed description"
+todo u 10 --due - 
 todo c 12
 todo reopen 3
 todo del 5
