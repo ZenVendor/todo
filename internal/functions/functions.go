@@ -30,65 +30,76 @@ const SW_ALL = 3
 const SW_OVERDUE = 4
 
 type Task struct {
-    id int
-    description string
-    done int
-    due time.Time
-    created time.Time
-    completed time.Time
-    updated time.Time
+    Id int
+    Description string
+    Done int
+    Due time.Time
+    Created time.Time
+    Completed time.Time
+    Updated time.Time
 }
 type TaskList []Task
 
 type Value struct {
-    name string
-    value interface{}
+    Name string
+    Value interface{}
 }
 type Values []Value
 
 type Config struct {
-    dbLocation string   `yaml:"dblocation"`
-    dbName string       `yaml:"dbname"`
-    dateFormat string   `yaml:"dateformat"`
+    DBLocation string   `yaml:"dblocation"`
+    DBName string       `yaml:"dbname"`
+    DateFormat string   `yaml:"dateformat"`
 }
 
-func (conf *Config) Prepare() (err error) {
+func (conf *Config) Prepare() (configFile string, err error) {
+    configDirs := []string{"."}
+    configDir := "."
+
     home, ok := os.LookupEnv("HOME")
-    if !ok {
-        return fmt.Errorf("HOME environment variable not set.")
+    if ok {
+        configDirs = append(configDirs, fmt.Sprintf("%s/.config/todo", home))
+        configDir = fmt.Sprintf("%s/.config/todo", home)
     }
 
-    configDir := fmt.Sprintf("%s/.config/todo", home)
-    configFile := fmt.Sprintf("%s/todo.yml", configDir)
-
-    conf.dbLocation = configDir
-    conf.dbName = "todo"
-    conf.dateFormat = "2006-01-02"
-
-    writeConf := fmt.Sprintf("dblocation: %s\ndbname: %s\ndateformat: %s", conf.dbLocation, conf.dbName, conf.dateFormat)
-
-    if _, err = os.Stat(configDir); os.IsNotExist(err) {
-        if err = os.MkdirAll(configDir, 0700); err != nil {
-            return
+    for _, cd := range configDirs {
+        if _, err = os.Stat(fmt.Sprintf("%s/todo.yml", cd)); err == nil {
+            configFile = fmt.Sprintf("%s/todo.yml", cd)
+            break
         }
     }
-    if _, err = os.Stat(configFile); os.IsNotExist(err) {
+
+    if configFile == "" { 
+        conf.DBLocation = configDir
+        conf.DBName = "todo"
+        conf.DateFormat = "2006-01-02"
+        
+        if _, err = os.Stat(configDir); os.IsNotExist(err) {
+            if err = os.MkdirAll(configDir, 0700); err != nil {
+                return
+            }
+        }
+
+        writeConf := fmt.Sprintf("dblocation: %s\ndbname: %s\ndateformat: %s", conf.DBLocation, conf.DBName, conf.DateFormat)
         if err = os.WriteFile(configFile, []byte(writeConf), 0700); err != nil {
             return
         }
     }
-    f, err := os.ReadFile(configFile)
-    if err != nil {
-        return
-    }
-
-    err = yaml.Unmarshal(f, &conf)
 
     return
 }
 
+func (conf *Config) ReadConfig(configFile string) (err error) {
+    f, err := os.ReadFile(configFile)
+    if err != nil {
+        return
+    }
+    err = yaml.Unmarshal(f, &conf)
+    return
+}
+
 func (conf *Config) OpenDB() (db *sql.DB, err error) {
-    db, err = sql.Open("sqlite3", fmt.Sprintf("%s/%s.db", conf.dbLocation, conf.dbName))
+    db, err = sql.Open("sqlite3", fmt.Sprintf("%s/%s.db", conf.DBLocation, conf.DBName))
     if err != nil {
         return
     }
@@ -102,12 +113,12 @@ func (conf *Config) OpenDB() (db *sql.DB, err error) {
 
 func (vs Values) ReadValue(name string) interface{} {
     idx := slices.IndexFunc(vs, func(v Value) bool {
-        return v.name == name
+        return v.Name == name
     })
     if idx == -1 {
         return nil
     }
-    return vs[idx].value
+    return vs[idx].Value
 }
 
 func ParseArgs(dateFormat string) (cmd, sw int, values Values, valid bool) {
@@ -292,34 +303,49 @@ func CreateTable(db *sql.DB) error {
 
 func (t Task) AddTask(db *sql.DB) (err error) {
     query := "insert into tasklist (description, done, due, created, updated) values (?, ?, ?, ?, ?);"
-    _, err = db.Exec(query, t.description, t.done, t.due, t.created, t.updated)
+    _, err = db.Exec(query, t.Description, t.Done, t.Due, t.Created, t.Updated)
     return err
 }
     
 func Count(db *sql.DB, sw int) (count int, err error) {
     query := "select count(*) from tasklist where done = 0;"
     switch sw {
-    case functions.SW_ALL:
+    case SW_ALL:
         query = "select count(*) from tasklist;"
-    case functions.SW_CLOSED: 
+    case SW_CLOSED: 
         query = "select count(*) from tasklist where done = 1;"
-    case functions.SW_OVERDUE:
+    case SW_OVERDUE:
         query = fmt.Sprintf("select count(*) from tasklist where done = 0 and due between '2000-01-01' and '%s';", time.Now())
     }
     err = db.QueryRow(query).Scan(&count)
     return
 }
 
+func CountPrompt(db *sql.DB) (open, overdue int, err error) {
+    query := "select count(*) from tasklist where done = 0;"
+    err = db.QueryRow(query).Scan(&open)
+    if err != nil {
+        open = -1
+    }
+
+    query = fmt.Sprintf("select count(*) from tasklist where done = 0 and due between '2000-01-01' and '%s';", time.Now().Format("2006-01-02"))
+    err = db.QueryRow(query).Scan(&overdue)
+    if err != nil {
+        overdue = -1
+    }
+    return 
+}
+
 func List(db *sql.DB, sw int) (tl TaskList, err error) {
     var query string
     switch sw {
-    case functions.SW_OPEN:
+    case SW_OPEN:
         query = "select * from tasklist where done = 0 order by due asc nulls last, created ;"
-    case functions.SW_CLOSED:
+    case SW_CLOSED:
         query = "select * from tasklist where done = 1 order by completed desc;"
-    case functions.SW_ALL:
+    case SW_ALL:
         query = "select * from tasklist order by done, completed desc, due asc nulls last, created;"
-    case functions.SW_OVERDUE:
+    case SW_OVERDUE:
         query = fmt.Sprintf("select * from tasklist where done = 0 and due between '2000-01-01' and '%s';", time.Now().Format("2006-01-02"))
     }
     
@@ -332,7 +358,7 @@ func List(db *sql.DB, sw int) (tl TaskList, err error) {
     for rows.Next() {
         var t Task
         var due, comp sql.NullString
-        if err = rows.Scan(&t.id, &t.description, &t.done, &due, &t.created, &comp, &t.updated); err != nil {
+        if err = rows.Scan(&t.Id, &t.Description, &t.Done, &due, &t.Created, &comp, &t.Updated); err != nil {
             return
         }
         if due.Valid {
@@ -340,14 +366,14 @@ func List(db *sql.DB, sw int) (tl TaskList, err error) {
             if err != nil {
                 return tl, err
             }
-            t.due = duedate 
+            t.Due = duedate 
         }
         if comp.Valid {
             completed, err := time.Parse(time.RFC3339, comp.String)
             if err != nil {
                 return tl, err
             }
-            t.completed = completed
+            t.Completed = completed
         }
         tl = append(tl, t)
     }
@@ -379,11 +405,11 @@ func Delete(db *sql.DB, taskId int) (err error) {
 
 func Select(db *sql.DB, taskId int) (t Task, err error) {
     query := "select id, description, due from tasklist where id = ?;"
-    err = db.QueryRow(query, taskId).Scan(&t.id, &t.description, &t.due)
+    err = db.QueryRow(query, taskId).Scan(&t.Id, &t.Description, &t.Due)
     return
 }
 func (t Task) Update(db *sql.DB) (err error) {
     query := "update tasklist set description = ?, due = ?, updated = ? where id = ?;"
-    _, err = db.Exec(query, t.description, t.due, t.updated, t.id)
+    _, err = db.Exec(query, t.Description, t.Due, t.Updated, t.Id)
     return err
 }

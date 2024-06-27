@@ -5,19 +5,22 @@ import (
 	"log"
 	"time"
 
-    "./internal/functions"
+	"github.com/ZenVendor/todo/internal/functions"
 )
 
 const VERSION = "0.6.2"
 
 func main () {
     var conf functions.Config
-    err := conf.Prepare()
+    configFile, err := conf.Prepare()
     if err != nil {
         log.Fatal(err)
     }
+    if err = conf.ReadConfig(configFile); err != nil {
+        log.Fatal(err)
+    }
 
-    cmd, sw, vals, valid := functions.ParseArgs(conf.dateFormat)
+    cmd, sw, vals, valid := functions.ParseArgs(conf.DateFormat)
 
     if !valid {
         PrintVersion()
@@ -73,20 +76,20 @@ func main () {
 
     if cmd == functions.CMD_ADD {
         var t functions.Task
-        t.description = vals.ReadValue("description").(string)
+        t.Description = vals.ReadValue("description").(string)
         if vals.ReadValue("due") != nil {
-            t.due = vals.ReadValue("due").(time.Time)
+            t.Due = vals.ReadValue("due").(time.Time)
         }      
-        t.created = time.Now()
-        t.updated = time.Now()
+        t.Created = time.Now()
+        t.Updated = time.Now()
 
         if err = t.AddTask(db); err != nil {
             log.Fatal(err)
         }
 
-        fmt.Printf("Added task: %s\n", t.description)
-        if t.due.Year() != 1 {
-            fmt.Printf("Due date: %s\n", t.due.Format(conf.dateFormat))
+        fmt.Printf("Added task: %s\n", t.Description)
+        if t.Due.Year() != 1 {
+            fmt.Printf("Due date: %s\n", t.Due.Format(conf.DateFormat))
         }
     }
    
@@ -114,20 +117,20 @@ func main () {
 
         for _, t := range tl {
             tStatus := "Open"
-            if t.done == 0 && t.due.Year() != 1 && t.due.Before(time.Now()) {
+            if t.Done == 0 && t.Due.Year() != 1 && t.Due.Before(time.Now()) {
                 tStatus = "Overdue"
             }
-            if t.done == 1 {
+            if t.Done == 1 {
                 tStatus = "Closed"
             }
-            if t.done == 0 {
-                if t.due.Year() == 1 {
-                    fmt.Printf("\t%s %d: %s\n", tStatus, t.id, t.description)
+            if t.Done == 0 {
+                if t.Due.Year() == 1 {
+                    fmt.Printf("\t%s %d: %s\n", tStatus, t.Id, t.Description)
                 } else {
-                    fmt.Printf("\t%s %d: %s, due date: %s\n", tStatus, t.id, t.description, t.due.Format(conf.dateFormat))
+                    fmt.Printf("\t%s %d: %s, due date: %s\n", tStatus, t.Id, t.Description, t.Due.Format(conf.DateFormat))
                 }
             } else {
-                fmt.Printf("\t%s %d: %s, completed: %s\n", tStatus, t.id, t.description, t.completed.Format(conf.dateFormat))
+                fmt.Printf("\t%s %d: %s, completed: %s\n", tStatus, t.Id, t.Description, t.Completed.Format(conf.DateFormat))
             }
         }
         fmt.Printf("End.\n")
@@ -143,12 +146,12 @@ func main () {
         }
 
         if vals.ReadValue("description") != nil {
-            t.description = vals.ReadValue("description").(string)
+            t.Description = vals.ReadValue("description").(string)
         }
         if vals.ReadValue("due") != nil {
-            t.due = vals.ReadValue("due").(time.Time)
+            t.Due = vals.ReadValue("due").(time.Time)
         }
-        t.updated = time.Now()
+        t.Updated = time.Now()
         if err = t.Update(db); err != nil {
             log.Fatal(err)
         }
@@ -158,9 +161,9 @@ func main () {
             if i != 0 {
                 updString += ", "
             }
-            updString += v.name
+            updString += v.Name
         }
-        fmt.Printf("Updated %s in task %d\n", updString, t.id)
+        fmt.Printf("Updated %s in task %d\n", updString, t.Id)
     }
     return
 }
