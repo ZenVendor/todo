@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-    "github.com/ZenVendor/todo/internal/functions"
+    "./internal/functions"
 )
 
 const VERSION = "0.6.2"
