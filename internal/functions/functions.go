@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"slices"
 	"strconv"
 	"time"
@@ -245,26 +246,23 @@ func ParseArgs(dateFormat string) (cmd, sw int, values Values, valid bool) {
                 if err != nil {
                     valid = false 
                 } else {
+                    var dd time.Time
                     if "--desc" == args[1] && "--due" == args[3] {
-                        dd, err := time.Parse(dateFormat, args[4])
-                        if err != nil {
-                            dd, _ = time.Parse(dateFormat, "0001-01-01")
+                        ok, _ := regexp.MatchString("[0-9]{4}-[0-9]{2}-[0-9]{2}", args[4])
+                        if ok {
+                            dd, _ = time.Parse(dateFormat, args[4])
                         }
-                        values = append(values, Value{"id", taskId})
-                        values = append(values, Value{"description", args[2]})
-                        values = append(values, Value{"due", dd})
-                        valid = true
                     }
                     if "--desc" == args[3] && "--due" == args[1] {
-                        dd, err := time.Parse(dateFormat, args[2])
-                        if err != nil {
-                            dd, _ = time.Parse(dateFormat, "0001-01-01")
+                        ok, _ := regexp.MatchString("[0-9]{4}-[0-9]{2}-[0-9]{2}", args[2])
+                        if ok {
+                            dd, _ = time.Parse(dateFormat, args[2])
                         }
-                        values = append(values, Value{"id", taskId})
-                        values = append(values, Value{"description", args[4]})
-                        values = append(values, Value{"due", dd})
-                        valid = true
                     }
+                    values = append(values, Value{"id", taskId})
+                    values = append(values, Value{"description", args[4]})
+                    values = append(values, Value{"due", dd})
+                    valid = true
                 }
             }
         }

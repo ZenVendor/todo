@@ -8,7 +8,7 @@ import (
 	"github.com/ZenVendor/todo/internal/functions"
 )
 
-const VERSION = "0.6.2"
+const VERSION = "0.7.1"
 
 func main () {
     var conf functions.Config
@@ -179,9 +179,10 @@ Usage:
 
 Without arguments defaults to listing active tasks.
 Frequently used commands have single-letter aliases.
-In ADD command, description is required and must be provided first.
+In ADD command, description is required and must be provided first, due date can optionally be provided second.
+In UPDATE the switches and their following values can be provided in any order.
 In commands that require it, task ID must follow the command.
-Values following switches can be provided in any order.
+Due date must match the format, default is "YYYY-MM-DD". 
 
     
     help | h | --help | -h                      display this help

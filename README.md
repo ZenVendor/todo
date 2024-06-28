@@ -4,19 +4,24 @@ While TODO apps are a dev learning meme, I found that I'm having trouble keeping
 Also, I've been trying to find a meaningful project for a beginner, so it made sense.
 
 This is a simple command line TODO program.
-It does one thing at a time. 
+It does one thing at a time, by design. 
+
+There is also a second executable, todo-prompt, displaying count of open and overdue tasks as [0:0] for use in PS1 string.
 
 ## Config
-I'm not sure it needs a config file, but it currently has one, with db location, db name and date format.
-* Config dir: $HOME/.config/todo
-* Config file: $HOME/.config/todo/todo.yml
-* Default db file: $HOME/.config/todo/todo.db
+There is a simple config file using YAML format.
+The program first checks current directory and $HOME/.config/todo dir for existenece of the config file and uses the first one it finds. If it doesn't find anything, a default config is created.
+
+* Default config dir: $HOME/.config/todo
+* Default config file: todo.yml
+* Default db file: todo.db
 
 ### Config parameters:
 * dblocation: $HOME/.config/todo/
 * dbname: "todo"
 * dateformat "2006-01-02"
 
+## Functionality
 
 1. **Current functions:**
 	* Add task with or without due date
