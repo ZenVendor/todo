@@ -14,32 +14,45 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const CMD_NONE = 0
-const CMD_ADD = 1
-const CMD_LIST = 2
-const CMD_COUNT = 3
-const CMD_UPDATE = 4
-const CMD_DELETE = 5
-const CMD_REOPEN = 6
-const CMD_COMPLETE = 7
-const CMD_VERSION = 8
-
-const SW_NONE = 0
-const SW_OPEN = 1
-const SW_CLOSED = 2
-const SW_ALL = 3
-const SW_OVERDUE = 4
+const (
+    CMD_NONE = iota
+    CMD_ADD
+    CMD_LIST
+    CMD_COUNT
+    CMD_UPDATE
+    CMD_DELETE
+    CMD_REOPEN
+    CMD_COMPLETE
+    CMD_VERSION
+)
+const (
+	SW_NONE = iota
+	SW_OPEN
+	SW_CLOSED
+	SW_ALL
+	SW_OVERDUE
+)
 
 type Task struct {
     Id int
     Description string
+    Priority int
+    GroupId int
     Done int
-    Due time.Time
-    Created time.Time
-    Completed time.Time
-    Updated time.Time
+    Due sql.NullTime
+    Completed sql.NullTime
+    Created sql.NullTime
+    Updated sql.NullTime
+    Group TaskGroup
 }
 type TaskList []Task
+
+type TaskGroup struct {
+    Id int
+    Name string
+    Created sql.NullTime
+    Updated sql.NullTime
+}
 
 type Value struct {
     Name string
@@ -86,7 +99,6 @@ func (conf *Config) Prepare() (configFile string, err error) {
             return
         }
     }
-
     return
 }
 
@@ -271,13 +283,12 @@ func ParseArgs(dateFormat string) (cmd, sw int, values Values, valid bool) {
 }
 
 func TableExists(db *sql.DB) bool {
-    var rowId int
-    if err := db.QueryRow("select rowid from sqlite_schema where type = 'table' and tbl_name = 'tasklist';").Scan(&rowId); err != nil {
-        if err == sql.ErrNoRows {
-            return false
-        } else {
-            log.Fatal(err)
-        }
+    var rows int
+    if err := db.QueryRow("select count(*) from sqlite_schema where type = 'table' and tbl_name in ('tasklist', 'taskgroup');").Scan(&rows); err != nil {
+        log.Fatal(err)
+    }
+    if rows != 2 {
+        return false
     }
     return true
 }
@@ -287,25 +298,98 @@ func CreateTable(db *sql.DB) error {
         create table tasklist (
             id integer not null primary key,
             description text not null,
+            priority integer null,
+            group_id integer not null,
             done integer not null,
             due datetime,
-            created datetime not null,
             completed datetime,
+            created datetime not null,
             updated datetime not null
         );
+        create table taskgroup (
+            id integer not null primary key,
+            name text not null,
+            created datetime not null,
+            updated datetime not null
+        );
+        insert into taskgroup (name, created, updated) values ('General', ?, ?);
     `
-    log.Println("Creating table.")
-    _, err := db.Exec(query)
+    log.Println("Creating tables.")
+    _, err := db.Exec(query, time.Now(), time.Now())
     return err
 }
 
-func (t Task) AddTask(db *sql.DB) (err error) {
-    query := "insert into tasklist (description, done, due, created, updated) values (?, ?, ?, ?, ?);"
-    _, err = db.Exec(query, t.Description, t.Done, t.Due, t.Created, t.Updated)
+func (t Task) Insert(db *sql.DB) (err error) {
+    query := "insert into tasklist (description, priority, group_id, done, due, completed, created, updated) values (?, ?, ?, ?, ?, ?, ?, ?);"
+    _, err = db.Exec(query, t.Description, t.Priority, t.GroupId, t.Done, t.Due, t.Completed, t.Created, t.Updated)
     return err
 }
+
+func (g TaskGroup) Insert(db *sql.DB) (err error) {
+    query := "insert into taskgroup (name, created, updated) values (?, ?, ?);"
+    _, err = db.Exec(query, g.Name, g.Created, g.Updated)
+    return err
+}
+func (t Task) Select(db *sql.DB) (err error) {
+    query := `
+        select 
+            t.description, t.priority, t.group_id, t.done, t.due, t.completed, t.created, t.updated
+            , g.id, g.name, g.created, g.updated
+        from 
+            tasklist t
+            join taskgroup g on g.id = t.group_id
+        where 
+            t.id = ?;
+    `
+    err = db.QueryRow(query, t.Id).Scan(&t.Description, &t.Priority, &t.GroupId, &t.Done, &t.Due, &t.Completed, &t.Created, &t.Updated, &t.Group.Id, &t.Group.Name, &t.Group.Created, &t.Group.Updated)
+    return
+}
+
+func (g TaskGroup) Select(db *sql.DB, byName bool) (err error) {
+    if byName {
+        query := `
+            select g.id, g.name, g.created, g.updated
+            from taskgroup g
+            where g.Name = ?;
+        `
+        err = db.QueryRow(query, g.Name).Scan(&g.Id, &g.Name, &g.Created, &g.Updated)
+    } else {
+        query := `
+        select g.id, g.name, g.created, g.updated
+        from taskgroup g
+        where g.id = ?;
+        `
+        err = db.QueryRow(query, g.Id).Scan(&g.Id, &g.Name, &g.Created, &g.Updated)
+    }
+    return
+}
+
+func (t Task) Update(db *sql.DB) (err error) {
+    query := "update tasklist set description = ?, priority = ?, group_id, done = ?, due = ?, completed = ?, updated = ? where id = ?;"
+    _, err = db.Exec(query, t.Description, t.Priority, t.GroupId, t.Done,  t.Due, t.Completed, t.Updated, t.Id)
+    return err
+}
+
+func (g TaskGroup) Update(db *sql.DB) (err error) {
+    query := "update taskgroup set name = ?, updated = ? where id = ?;"
+    _, err = db.Exec(query, g.Name, g.Updated, g.Id)
+    return err
+}
+
+func (t Task) Delete(db *sql.DB) (err error) {
+    query := "delete from tasklist where id = ?;"
+    _, err = db.Exec(query, t.Id)
+    return err
+}
+
+func (g TaskGroup) Delete(db *sql.DB) (err error) {
+    query := "delete from tasklist where id = ?;"
+    _, err = db.Exec(query, g.Id)
+    return err
+}
+
     
-func Count(db *sql.DB, sw int) (count int, err error) {
+func CountTask(db *sql.DB, sw int) (count int, err error) {
     query := "select count(*) from tasklist where done = 0;"
     switch sw {
     case SW_ALL:
@@ -313,9 +397,69 @@ func Count(db *sql.DB, sw int) (count int, err error) {
     case SW_CLOSED: 
         query = "select count(*) from tasklist where done = 1;"
     case SW_OVERDUE:
-        query = fmt.Sprintf("select count(*) from tasklist where done = 0 and due between '2000-01-01' and '%s';", time.Now())
+        query = "select count(*) from tasklist where done = 0 and due between '2000-01-01' and ?;"
     }
-    err = db.QueryRow(query).Scan(&count)
+    err = db.QueryRow(query, time.Now()).Scan(&count)
+    return
+}
+
+func CountGroup(db *sql.DB, sw int) (vs Values, err error) {
+    query := `
+        select g.name, count(*)
+        from
+            taskgroup g
+            join tasklist t on t.group_id = g.id
+        where t.done = 0
+        group by g.name
+        order by g.id;
+
+    `
+    switch sw {
+    case SW_ALL:
+        query = `
+            select g.name, count(*)
+            from
+                taskgroup g
+                join tasklist t on t.group_id = g.id
+            group by g.name;
+        `
+    case SW_CLOSED:
+        query = `
+            select g.name, count(*)
+            from
+                taskgroup g
+                join tasklist t on t.group_id = g.id
+            where t.done = 1
+            group by g.name
+            order by g.id;
+        `
+    case SW_OVERDUE:
+        query = `
+            select g.name, count(*)
+            from
+                taskgroup g
+                join tasklist t on t.group_id = g.id
+            where 
+                t.done = 0 
+                and t.due between '2001-01-01' and ?
+            group by g.name
+            order by g.name;
+        `
+    }
+
+    rows, err := db.Query(query, time.Now()) 
+    if err != nil {
+        return 
+    }
+    defer rows.Close()
+    
+    for rows.Next() {
+        var v Value
+        if err = rows.Scan(&v.Name, &v.Value); err != nil {
+            return
+        }
+        vs = append(vs, v)
+    }
     return
 }
 
@@ -325,9 +469,8 @@ func CountPrompt(db *sql.DB) (open, overdue int, err error) {
     if err != nil {
         open = -1
     }
-
-    query = fmt.Sprintf("select count(*) from tasklist where done = 0 and due between '2000-01-01' and '%s';", time.Now().Format("2006-01-02"))
-    err = db.QueryRow(query).Scan(&overdue)
+    query = "select * from tasklist where done = 0 and due between '2000-01-01' and ?;"
+    err = db.QueryRow(query, time.Now()).Scan(&overdue)
     if err != nil {
         overdue = -1
     }
@@ -335,18 +478,59 @@ func CountPrompt(db *sql.DB) (open, overdue int, err error) {
 }
 
 func List(db *sql.DB, sw int) (tl TaskList, err error) {
-    var query string
+    query := `
+        select 
+            t.id, t.description, t.priority, t.group_id, t.done, t.due, t.completed, t.created, t.updated
+            , g.id, g.name, g.created, g.updated
+        from
+            tasklist t
+            join taskgroup g on g.id = t.group_id
+        where
+            t.done = 0
+        order by
+            t.priority desc, t.due nulls last, g.name 
+    `
     switch sw {
-    case SW_OPEN:
-        query = "select * from tasklist where done = 0 order by due asc nulls last, created ;"
     case SW_CLOSED:
-        query = "select * from tasklist where done = 1 order by completed desc;"
+        query = `
+            select 
+                t.id, t.description, t.priority, t.group_id, t.done, t.due, t.completed, t.created, t.updated
+                , g.id, g.name, g.created, g.updated
+            from
+                tasklist t
+                join taskgroup g on g.id = t.group_id
+            where
+                t.done = 1
+            order by
+                g.name, t.completed desc
+        `
     case SW_ALL:
-        query = "select * from tasklist order by done, completed desc, due asc nulls last, created;"
+        query = `
+            select 
+                t.id, t.description, t.priority, t.group_id, t.done, t.due, t.completed, t.created, t.updated
+                , g.id, g.name, g.created, g.updated
+            from
+                tasklist t
+                join taskgroup g on g.id = t.group_id
+            order by
+                t.done, t.priority desc, t.due, g.name 
+        `
     case SW_OVERDUE:
-        query = fmt.Sprintf("select * from tasklist where done = 0 and due between '2000-01-01' and '%s';", time.Now().Format("2006-01-02"))
+        query = `
+            select 
+                t.id, t.description, t.priority, t.group_id, t.done, t.due, t.completed, t.created, t.updated
+                , g.id, g.name, g.created, g.updated
+            from
+                tasklist t
+                join taskgroup g on g.id = t.group_id
+            where
+                t.done = 0
+                and t.due between '2000-01-01' and ?
+            order by
+                t.priority desc, t.due, g.name 
+        `
     }
-    
+
     rows, err := db.Query(query) 
     if err != nil {
         return 
@@ -355,23 +539,10 @@ func List(db *sql.DB, sw int) (tl TaskList, err error) {
     
     for rows.Next() {
         var t Task
-        var due, comp sql.NullString
-        if err = rows.Scan(&t.Id, &t.Description, &t.Done, &due, &t.Created, &comp, &t.Updated); err != nil {
+        if err = rows.Scan(&t.Id, &t.Description, &t.Priority, &t.GroupId, &t.Done, &t.Due, &t.Completed, &t.Created, &t.Updated,
+                &t.Group.Id, &t.Group.Name, &t.Group.Created, &t.Group.Updated); 
+            err != nil {
             return
-        }
-        if due.Valid {
-            duedate, err := time.Parse(time.RFC3339, due.String)
-            if err != nil {
-                return tl, err
-            }
-            t.Due = duedate 
-        }
-        if comp.Valid {
-            completed, err := time.Parse(time.RFC3339, comp.String)
-            if err != nil {
-                return tl, err
-            }
-            t.Completed = completed
         }
         tl = append(tl, t)
     }
@@ -379,35 +550,4 @@ func List(db *sql.DB, sw int) (tl TaskList, err error) {
         return
     }
     return 
-}
-
-func Complete(db *sql.DB, taskId int) (err error) {
-    query := "update tasklist set done = 1, completed = ?, updated = ? where id = ?;"
-    now := time.Now().Format(time.RFC3339)
-    _, err = db.Exec(query, now, now, taskId)
-    return err
-}
-
-func Reopen(db *sql.DB, taskId int) (err error) {
-    query := "update tasklist set done = 0, completed = null, updated = ? where id = ?;"
-    now := time.Now().Format(time.RFC3339)
-    _, err = db.Exec(query, now, taskId)
-    return err
-}
-
-func Delete(db *sql.DB, taskId int) (err error) {
-    query := "delete from tasklist where id = ?;"
-    _, err = db.Exec(query, taskId)
-    return err
-}
-
-func Select(db *sql.DB, taskId int) (t Task, err error) {
-    query := "select id, description, due from tasklist where id = ?;"
-    err = db.QueryRow(query, taskId).Scan(&t.Id, &t.Description, &t.Due)
-    return
-}
-func (t Task) Update(db *sql.DB) (err error) {
-    query := "update tasklist set description = ?, due = ?, updated = ? where id = ?;"
-    _, err = db.Exec(query, t.Description, t.Due, t.Updated, t.Id)
-    return err
 }
