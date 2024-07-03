@@ -21,6 +21,7 @@ const (
 	CMD_COMPLETE
 	CMD_REOPEN
 	CMD_PREPARE
+    CMD_PROMPT
     CMD_HELP
     CMD_VERSION
 )
@@ -42,6 +43,7 @@ func MapCommand() map[string]int {
 		"open":     CMD_REOPEN,
 		"prepare":  CMD_PREPARE,
 		"prep":     CMD_PREPARE,
+        "prompt":   CMD_PROMPT,
         "help":     CMD_HELP,
         "h":        CMD_HELP,
         "--help":   CMD_HELP,
@@ -80,12 +82,13 @@ const (
 func MapArgument() map[string]int {
     return map[string]int{
         "--open":       SW_OPEN,
-        "-o":           SW_OPEN,
         "--closed":     SW_CLOSED,
         "-c":           SW_CLOSED,
         "--all":        SW_ALL,
         "-a":           SW_ALL,
         "--overdue":    SW_OVERDUE,
+        "--od":         SW_OVERDUE,
+        "-o":           SW_OVERDUE,
         "--description":SW_DESCRIPTION,
         "--desc":       SW_DESCRIPTION,
         "--due":        SW_DUE,

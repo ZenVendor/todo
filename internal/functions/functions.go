@@ -316,8 +316,8 @@ func CountPrompt(db *sql.DB) (open, overdue int, err error) {
     if err != nil {
         open = -1
     }
-    query = "select count(*) from tasklist where done = 0 and due between '2000-01-01' and ?;"
-    err = db.QueryRow(query, time.Now()).Scan(&overdue)
+    query = "select count(*) from tasklist where done = 0 and due < ?;"
+    err = db.QueryRow(query, NullNow()).Scan(&overdue)
     if err != nil {
         overdue = -1
     }
@@ -372,13 +372,13 @@ func List(db *sql.DB, sw int) (tl TaskList, err error) {
                 join taskgroup g on g.id = t.group_id
             where
                 t.done = 0
-                and t.due between '2000-01-01' and ?
+                and t.due < ?
             order by
                 t.priority desc, t.due, g.name 
         `
     }
 
-    rows, err := db.Query(query) 
+    rows, err := db.Query(query, NullNow()) 
     if err != nil {
         return 
     }
@@ -393,8 +393,6 @@ func List(db *sql.DB, sw int) (tl TaskList, err error) {
         }
         tl = append(tl, t)
     }
-    if err = rows.Err(); err != nil {
-        return
-    }
+    err = rows.Err()
     return 
 }
