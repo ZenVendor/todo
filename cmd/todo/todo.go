@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	_ "embed"
 	"fmt"
 	"log"
@@ -22,8 +23,10 @@ func PrintHelp() {
     fmt.Println(helpString)
 }
 
+
 func main () {
     var conf f.Config
+
     configFile, err := conf.Prepare()
     if err != nil {
         log.Fatal(err)
@@ -32,12 +35,12 @@ func main () {
         log.Fatal(err)
     }
 
-    cmd, sw, vals, valid := f.ParseArgs(conf.DateFormat)
+    cmd, sw, vals, err := f.ParseArgs(f.CMD_LIST, f.SW_OPEN)
 
-    if !valid {
+    if err != nil || cmd == f.CMD_HELP {
         PrintVersion()
         PrintHelp()
-        return
+        log.Fatal(err)
     }
     if cmd == f.CMD_VERSION {
         PrintVersion()
@@ -61,81 +64,88 @@ func main () {
 
     if slices.Contains([]int{f.CMD_COMPLETE, f.CMD_DELETE, f.CMD_REOPEN, f.CMD_UPDATE}, cmd) {
         var t f.Task
-        t.Id = vals.ReadValue("id").(int)
-        err = t.Select(db)
-        if err != nil {
+        addGroup := false
+
+        t.Id = vals.ReadValue(cmd, f.SW_DEFAULT, conf.DateFormat).(int)
+        if err = t.Select(db); err != nil {
             log.Fatal(err)
         }
-        var action string
-
         switch cmd {
         case f.CMD_COMPLETE:
             t.Done = 1
-            t.Completed.Time = time.Now()
-            t.Completed.Valid = true
-            action = "completed"
-        case f.CMD_DELETE:
-            action = "deleted"
+            t.Completed = f.NullNow()
         case f.CMD_REOPEN:
             t.Done = 0
             t.Completed.Valid = false
-            action = "reopened"
         case f.CMD_UPDATE:
-            if vals.ReadValue("description") != nil {
-                t.Description = vals.ReadValue("description").(string)
+            if vals.ValueIsSet(f.SW_DESCRIPTION) {
+                t.Description = vals.ReadValue(cmd, f.SW_DESCRIPTION, conf.DateFormat).(string)
             }
-            if vals.ReadValue("priority") != nil {
-                t.Priority = vals.ReadValue("priority").(int)
+            if vals.ValueIsSet(f.SW_PRIORITY) {
+                t.Priority = vals.ReadValue(cmd, f.SW_PRIORITY, conf.DateFormat).(int)
             }
-            if vals.ReadValue("due") != nil {
-                t.Due.Time = vals.ReadValue("due").(time.Time)
-                t.Due.Valid = true
+            if vals.ValueIsSet(f.SW_DUE) {
+                t.Due = vals.ReadValue(cmd, f.SW_DUE, conf.DateFormat).(sql.NullTime)
             }
-            action = "updated"
+            if vals.ValueIsSet(f.SW_GROUP) {
+                t.Group.Name = vals.ReadValue(cmd, f.SW_GROUP, conf.DateFormat).(string)
+                if err = t.Group.Select(db, true); err == sql.ErrNoRows {
+                    addGroup = true
+                } 
+            }
         }
-        t.Updated.Time = time.Now()
-        t.Updated.Valid = true
+        t.Updated = f.NullNow()
 
         if cmd == f.CMD_DELETE {
             err = t.Delete(db)
         } else {
+            if addGroup {
+                t.Group.Created = f.NullNow()
+                t.Group.Updated = f.NullNow()
+                if err = t.Group.Insert(db); err != nil {
+                    log.Fatal(err)
+                }
+            }
             err = t.Update(db)
         }
         if err != nil {
             log.Fatal(err)
         }
-        fmt.Printf("Task %d has been %s.\n", t.Id, action)
+        fmt.Printf("Task %d has been %sd.\n", t.Id, f.MapCommandDescription()[cmd])
     }
         
     if cmd == f.CMD_ADD {
         var t f.Task
-        t.Description = vals.ReadValue("description").(string)
+        //t.Id
+        t.Description = vals.ReadValue(cmd, f.SW_DEFAULT, conf.DateFormat).(string)
         t.Priority = 1
-        if vals.ReadValue("priority") != nil {
-            t.Priority = vals.ReadValue("priority").(int)
-        }      
-        t.GroupId = 1
-        if vals.ReadValue("group") != nil {
-            t.Group.Name = vals.ReadValue("group").(string)
-            err = t.Group.Select(db, true)
-        }      
-        if vals.ReadValue("due") != nil {
-            t.Due.Time = vals.ReadValue("due").(time.Time)
-            t.Due.Valid = true
-        }      
-        t.Created.Time = time.Now()
-        t.Created.Valid = true
-        t.Updated.Time = time.Now()
-        t.Updated.Valid = true
-
+        if vals.ValueIsSet(f.SW_PRIORITY) {
+            t.Priority = vals.ReadValue(cmd, f.SW_PRIORITY, conf.DateFormat).(int)
+        } 
+        t.Done = 0
+        //t.Due
+        if vals.ValueIsSet(f.SW_DUE) {
+            t.Due = vals.ReadValue(cmd, f.SW_DUE, conf.DateFormat).(sql.NullTime)
+        }
+        //t.Completed
+        t.Created = f.NullNow()
+        t.Updated = f.NullNow()
+        t.Group.Name = "Default"
+        if vals.ValueIsSet(f.SW_GROUP) {
+            t.Group.Name = vals.ReadValue(cmd, f.SW_GROUP, conf.DateFormat).(string)
+        }
+        if err = t.Group.Select(db, true); err == sql.ErrNoRows {
+            t.Group.Created = f.NullNow()
+            t.Group.Updated = f.NullNow()
+            if err = t.Group.Insert(db); err != nil {
+                log.Fatal(err)
+            }
+        }
         if err = t.Insert(db); err != nil {
             log.Fatal(err)
         }
 
-        fmt.Printf("Added task: %s\n", t.Description)
-        if t.Due.Valid {
-            fmt.Printf("Due date: %s\n", t.Due.Time.Format(conf.DateFormat))
-        }
+        fmt.Printf("Added task %d: %s\n", t.Id, t.Description)
     }
    
     if cmd == f.CMD_LIST {
@@ -147,18 +157,7 @@ func main () {
         if err != nil {
             log.Fatal(err)
         }
-        var tType string 
-        switch sw {
-            case f.SW_OPEN:
-                tType = "Open"
-            case f.SW_CLOSED:
-                tType = "Closed"
-            case f.SW_ALL:
-                tType = "All"
-            case f.SW_OVERDUE:
-               tType = "Overdue"
-        }
-        fmt.Printf("%s tasks: %d\n", tType, count)
+        fmt.Printf("%s tasks: %d\n", f.MapArgumentDescription()[sw], count)
 
         for _, t := range tl {
             tStatus := "Open"
