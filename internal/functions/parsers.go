@@ -20,10 +20,11 @@ const (
 	CMD_DELETE
 	CMD_COMPLETE
 	CMD_REOPEN
-	CMD_PREPARE
     CMD_PROMPT
     CMD_HELP
     CMD_VERSION
+    CMD_PREPARE
+    CMD_RESET
 )
 
 func MapCommand() map[string]int {
@@ -41,8 +42,6 @@ func MapCommand() map[string]int {
 		"c":        CMD_COMPLETE,
 		"reopen":   CMD_REOPEN,
 		"open":     CMD_REOPEN,
-		"prepare":  CMD_PREPARE,
-		"prep":     CMD_PREPARE,
         "prompt":   CMD_PROMPT,
         "help":     CMD_HELP,
         "h":        CMD_HELP,
@@ -53,6 +52,9 @@ func MapCommand() map[string]int {
         "v":        CMD_VERSION,
         "--version":CMD_VERSION,
         "-v":       CMD_VERSION,
+        "prepare":  CMD_PREPARE,
+        "prep":     CMD_PREPARE,
+        "reset":    CMD_RESET,
 	}
 }
 
@@ -66,6 +68,7 @@ func MapCommandDescription() map[int]string {
         CMD_COMPLETE:   "complete",
         CMD_REOPEN:     "reopen",
         CMD_PREPARE:    "prepare",
+        CMD_RESET:      "reset",
     }
 }
 const (
@@ -78,6 +81,7 @@ const (
     SW_PRIORITY
     SW_GROUP
     SW_DEFAULT
+    SW_LOCAL
 )
 func MapArgument() map[string]int {
     return map[string]int{
@@ -95,6 +99,7 @@ func MapArgument() map[string]int {
         "--priority":   SW_PRIORITY,
         "--pty":        SW_PRIORITY,
         "--group":      SW_GROUP,
+        "--local":      SW_LOCAL,
     } 
 }
 func MapArgumentDescription() map[int]string {
@@ -108,6 +113,7 @@ func MapArgumentDescription() map[int]string {
         SW_PRIORITY:    "priority",
         SW_GROUP:       "group",
         SW_DEFAULT:     "default",
+        SW_LOCAL:       "local",
     }
 }
 
@@ -147,7 +153,7 @@ func ParseArgs(defaultCmd, defaultSw int) (cmd int, sw int, argvals ArgVals, err
                 }
                 continue
             }
-            if slices.Contains([]int{SW_OPEN, SW_CLOSED, SW_ALL, SW_OVERDUE}, arg) {
+            if slices.Contains([]int{SW_OPEN, SW_CLOSED, SW_ALL, SW_OVERDUE, SW_LOCAL}, arg) {
                 if swSet {
                     err = fmt.Errorf("Multiple switches: %s, %s\n", MapArgumentDescription()[sw], MapArgumentDescription()[arg])
                     return

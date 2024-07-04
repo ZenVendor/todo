@@ -2,15 +2,14 @@ package functions
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
-	"os"
+	"path/filepath"
 	"slices"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
-	"gopkg.in/yaml.v2"
 )
+
 
 func NullNow() sql.NullTime {
     return sql.NullTime{Time: time.Now(), Valid: true}
@@ -42,68 +41,10 @@ type Value struct {
 }
 type Values []Value
 
-type Config struct {
-    DBLocation string   `yaml:"dblocation"`
-    DBName string       `yaml:"dbname"`
-    DateFormat string   `yaml:"dateformat"`
-}
-
-func (conf *Config) Prepare() (configFile string, err error) {
-    configDirs := []string{"."}
-    configDir := "."
-
-    home, ok := os.LookupEnv("HOME")
-    if ok {
-        configDirs = append(configDirs, fmt.Sprintf("%s/.config/todo", home))
-        configDir = fmt.Sprintf("%s/.config/todo", home)
-    }
-
-    for _, cd := range configDirs {
-        if _, err = os.Stat(fmt.Sprintf("%s/todo.yml", cd)); err == nil {
-            configFile = fmt.Sprintf("%s/todo.yml", cd)
-            break
-        }
-    }
-
-    if configFile == "" { 
-        conf.DBLocation = configDir
-        conf.DBName = "todo"
-        conf.DateFormat = "2006-01-02"
-        
-        if _, err = os.Stat(configDir); os.IsNotExist(err) {
-            if err = os.MkdirAll(configDir, 0700); err != nil {
-                return
-            }
-        }
-
-        writeConf := fmt.Sprintf("dblocation: %s\ndbname: %s\ndateformat: %s", conf.DBLocation, conf.DBName, conf.DateFormat)
-        if err = os.WriteFile(configFile, []byte(writeConf), 0700); err != nil {
-            return
-        }
-    }
-    return
-}
-
-func (conf *Config) ReadConfig(configFile string) (err error) {
-    f, err := os.ReadFile(configFile)
-    if err != nil {
-        return
-    }
-    err = yaml.Unmarshal(f, &conf)
-    return
-}
 
 func (conf *Config) OpenDB() (db *sql.DB, err error) {
-    db, err = sql.Open("sqlite3", fmt.Sprintf("%s/%s.db", conf.DBLocation, conf.DBName))
-    if err != nil {
-        return
-    }
-    if !TableExists(db) {
-        if err = CreateTable(db); err != nil {
-            return
-        }
-    }
-    return 
+    db, err = sql.Open("sqlite3", filepath.Join(conf.DBLocation, conf.DBName))
+    return
 }
 
 func (vs Values) ReadValue(name string) interface{} {

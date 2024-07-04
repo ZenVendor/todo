@@ -27,14 +27,6 @@ func PrintHelp() {
 func main () {
     var conf f.Config
 
-    configFile, err := conf.Prepare()
-    if err != nil {
-        log.Fatal(err)
-    }
-    if err = conf.ReadConfig(configFile); err != nil {
-        log.Fatal(err)
-    }
-
     cmd, sw, vals, err := f.ParseArgs(f.CMD_LIST, f.SW_OPEN)
 
     if err != nil || cmd == f.CMD_HELP {
@@ -46,7 +38,20 @@ func main () {
         PrintVersion()
         return
     }
+    if cmd == f.CMD_PREPARE || cmd == f.CMD_RESET {
+        local := false
+        if sw == f.SW_LOCAL {
+            local = true
+        }
+        reset := false
+        if cmd == f.CMD_RESET {
+            reset = true
+        }
+        conf.Prepare(local, reset)
+        return
+    }
 
+    conf.ReadConfig()
     db, err := conf.OpenDB()
     if err != nil {
         log.Fatal(err)
