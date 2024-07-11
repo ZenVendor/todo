@@ -1,0 +1,65 @@
+
+Usage: 
+    todo [command] [required-argument] [option] [argument]
+
+Without arguments defaults to listing active tasks.
+Frequently used commands have single-letter aliases.
+In ADD command, description is required and must be provided first, due date can optionally be provided second.
+In UPDATE the switches and their following values can be provided in any order.
+In commands that require it, task ID must follow the command.
+Due date must match the format, default is "YYYY-MM-DD". 
+
+Commands:
+    
+    help | h | --help | -h                      Display this help
+
+    version | v | --version | -v              Display program version
+
+    count                                       Display task count. A switch is optional
+        --open                                      default
+        --completed | --closed |-c
+        --overdue | --od | -o
+        --all | -a
+
+    list | l                                    List tasks. A switch is optional
+        --open                                      default 
+        --completed | --closed |-c
+        --overdue | --od | -o
+        --all | -a
+        
+    add | a [description]                       Add a new task. Description is required. Additional arguments can be added
+        --due [date]                                date in configured format; default: YYYY-MM-DD
+        --priority | --pty [number]
+        --group [text]
+
+    update | u [task_id]                        Update the task. At least one argument is required
+        --description | --desc [text]           
+        --due [date]                                date in configured format; default: YYYY-MM-DD
+        --priority | --pty [number]
+        --group [text]                  
+
+    delete | del [task_id]                      Delete task
+
+    complete | c [task_id]                      Set task completed
+
+    reopen | open [task_id]                     Reopen completed task
+
+    prepare | prep                              Add default config and database, if they don't exist
+        --local                                     do it in current directory (for testing)
+
+    reset                                       Add default config and database, removing existing ones
+        --local                                     do it in current directory (for testing)
+
+Examples:
+    todo
+    todo a "New task"
+    todo add "New task" --due "2024-08-13" --pty 3
+    todo list --all
+    todo l -o
+    todo count -c
+    todo update 15 --priority 1 --group "Project"
+    todo u 10 --due -
+    todo c 12
+    todo reopen 3
+    todo del 5
+

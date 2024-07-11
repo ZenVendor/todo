@@ -1,78 +1,62 @@
-package functions
+package main
 
 import (
 	"database/sql"
 	"log"
 	"path/filepath"
-	"slices"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
-
 func NullNow() sql.NullTime {
-    return sql.NullTime{Time: time.Now(), Valid: true}
+	return sql.NullTime{Time: time.Now(), Valid: true}
 }
 
 type Task struct {
-    Id int
-    Description string
-    Priority int
-    Done int
-    Due sql.NullTime
-    Completed sql.NullTime
-    Created sql.NullTime
-    Updated sql.NullTime
-    Group TaskGroup
+	Id          int
+	Description string
+	Priority    int
+	Done        int
+	Due         sql.NullTime
+	Completed   sql.NullTime
+	Created     sql.NullTime
+	Updated     sql.NullTime
+	Group       TaskGroup
 }
 type TaskList []Task
 
 type TaskGroup struct {
-    Id int
-    Name string
-    Created sql.NullTime
-    Updated sql.NullTime
+	Id      int
+	Name    string
+	Created sql.NullTime
+	Updated sql.NullTime
 }
 
 type Value struct {
-    Name string
-    Value interface{}
+	Name  string
+	Value interface{}
 }
 type Values []Value
 
-
 func (conf *Config) OpenDB() (db *sql.DB, err error) {
-    db, err = sql.Open("sqlite3", filepath.Join(conf.DBLocation, conf.DBName))
-    return
+	db, err = sql.Open("sqlite3", filepath.Join(conf.DBLocation, conf.DBName))
+	return
 }
-
-func (vs Values) ReadValue(name string) interface{} {
-    idx := slices.IndexFunc(vs, func(v Value) bool {
-        return v.Name == name
-    })
-    if idx == -1 {
-        return nil
-    }
-    return vs[idx].Value
-}
-
-
-
 
 func TableExists(db *sql.DB) bool {
-    var rows int
-    if err := db.QueryRow("select count(*) from sqlite_schema where type = 'table' and tbl_name in ('tasklist', 'taskgroup');").Scan(&rows); err != nil {
-        log.Fatal(err)
-    }
-    if rows != 2 {
-        return false
-    }
-    return true
+	var rows int
+	if err := db.QueryRow("select count(*) from sqlite_schema where type = 'table' and tbl_name in ('tasklist', 'taskgroup');").Scan(&rows); err != nil {
+		log.Fatal(err)
+	}
+	if rows != 2 {
+		return false
+	}
+	return true
 }
-    
+
 func CreateTable(db *sql.DB) error {
-    query := `
+	query := `
         create table tasklist (
             id integer primary key not null,
             description text not null,
@@ -92,34 +76,34 @@ func CreateTable(db *sql.DB) error {
         );
         insert into taskgroup (name, created, updated) values ('Default', ?, ?);
     `
-    log.Println("Creating tables.")
-    _, err := db.Exec(query, time.Now(), time.Now())
-    return err
+	log.Println("Creating tables.")
+	_, err := db.Exec(query, time.Now(), time.Now())
+	return err
 }
 
 func (t *Task) Insert(db *sql.DB) (err error) {
-    query := "insert into tasklist (description, priority, group_id, done, due, completed, created, updated) values (?, ?, ?, ?, ?, ?, ?, ?);"
-    r, err := db.Exec(query, t.Description, t.Priority, t.Group.Id, t.Done, t.Due, t.Completed, t.Created, t.Updated)
-    if err != nil {
-        return
-    }
-    idr, err := r.LastInsertId()
-    t.Id = int(idr)
-    return
+	query := "insert into tasklist (description, priority, group_id, done, due, completed, created, updated) values (?, ?, ?, ?, ?, ?, ?, ?);"
+	r, err := db.Exec(query, t.Description, t.Priority, t.Group.Id, t.Done, t.Due, t.Completed, t.Created, t.Updated)
+	if err != nil {
+		return
+	}
+	idr, err := r.LastInsertId()
+	t.Id = int(idr)
+	return
 }
 
 func (g *TaskGroup) Insert(db *sql.DB) (err error) {
-    query := "insert into taskgroup (name, created, updated) values (?, ?, ?);"
-    r, err := db.Exec(query, g.Name, g.Created, g.Updated)
-    if err != nil {
-        return
-    }
-    idr, err := r.LastInsertId()
-    g.Id = int(idr)
-    return
+	query := "insert into taskgroup (name, created, updated) values (?, ?, ?);"
+	r, err := db.Exec(query, g.Name, g.Created, g.Updated)
+	if err != nil {
+		return
+	}
+	idr, err := r.LastInsertId()
+	g.Id = int(idr)
+	return
 }
 func (t *Task) Select(db *sql.DB) (err error) {
-    query := `
+	query := `
         select 
             t.id, t.description, t.priority, t.done, t.due, t.completed, t.created, t.updated
             , g.id, g.name, g.created, g.updated
@@ -129,70 +113,69 @@ func (t *Task) Select(db *sql.DB) (err error) {
         where 
             t.id = ?;
     `
-    err = db.QueryRow(query, t.Id).Scan(&t.Id, &t.Description, &t.Priority, &t.Done, &t.Due, &t.Completed, &t.Created, &t.Updated, &t.Group.Id, &t.Group.Name, &t.Group.Created, &t.Group.Updated)
-    return
+	err = db.QueryRow(query, t.Id).Scan(&t.Id, &t.Description, &t.Priority, &t.Done, &t.Due, &t.Completed, &t.Created, &t.Updated, &t.Group.Id, &t.Group.Name, &t.Group.Created, &t.Group.Updated)
+	return
 }
 
 func (g *TaskGroup) Select(db *sql.DB, byName bool) (err error) {
-    if byName {
-        query := `
+	if byName {
+		query := `
             select g.id, g.name, g.created, g.updated
             from taskgroup g
             where g.Name = ?;
         `
-        err = db.QueryRow(query, g.Name).Scan(&g.Id, &g.Name, &g.Created, &g.Updated)
-    } else {
-        query := `
+		err = db.QueryRow(query, g.Name).Scan(&g.Id, &g.Name, &g.Created, &g.Updated)
+	} else {
+		query := `
         select g.id, g.name, g.created, g.updated
         from taskgroup g
         where g.id = ?;
         `
-        err = db.QueryRow(query, g.Id).Scan(&g.Id, &g.Name, &g.Created, &g.Updated)
-    }
-    return
+		err = db.QueryRow(query, g.Id).Scan(&g.Id, &g.Name, &g.Created, &g.Updated)
+	}
+	return
 }
 
 func (t Task) Update(db *sql.DB) (err error) {
-    query := "update tasklist set description = ?, priority = ?, group_id = ?, done = ?, due = ?, completed = ?, updated = ? where id = ?;"
-    _, err = db.Exec(query, t.Description, t.Priority, t.Group.Id, t.Done, t.Due, t.Completed, t.Updated, t.Id)
-    return err
+	query := "update tasklist set description = ?, priority = ?, group_id = ?, done = ?, due = ?, completed = ?, updated = ? where id = ?;"
+	_, err = db.Exec(query, t.Description, t.Priority, t.Group.Id, t.Done, t.Due, t.Completed, t.Updated, t.Id)
+	return err
 }
 
 func (g TaskGroup) Update(db *sql.DB) (err error) {
-    query := "update taskgroup set name = ?, updated = ? where id = ?;"
-    _, err = db.Exec(query, g.Name, g.Updated, g.Id)
-    return err
+	query := "update taskgroup set name = ?, updated = ? where id = ?;"
+	_, err = db.Exec(query, g.Name, g.Updated, g.Id)
+	return err
 }
 
 func (t Task) Delete(db *sql.DB) (err error) {
-    query := "delete from tasklist where id = ?;"
-    _, err = db.Exec(query, t.Id)
-    return err
+	query := "delete from tasklist where id = ?;"
+	_, err = db.Exec(query, t.Id)
+	return err
 }
 
 func (g TaskGroup) Delete(db *sql.DB) (err error) {
-    query := "delete from tasklist where id = ?;"
-    _, err = db.Exec(query, g.Id)
-    return err
+	query := "delete from tasklist where id = ?;"
+	_, err = db.Exec(query, g.Id)
+	return err
 }
 
-    
 func CountTask(db *sql.DB, sw int) (count int, err error) {
-    query := "select count(*) from tasklist where done = 0;"
-    switch sw {
-    case SW_ALL:
-        query = "select count(*) from tasklist;"
-    case SW_CLOSED: 
-        query = "select count(*) from tasklist where done = 1;"
-    case SW_OVERDUE:
-        query = "select count(*) from tasklist where done = 0 and due between '2000-01-01' and ?;"
-    }
-    err = db.QueryRow(query, time.Now()).Scan(&count)
-    return
+	query := "select count(*) from tasklist where done = 0;"
+	switch sw {
+	case SW_ALL:
+		query = "select count(*) from tasklist;"
+	case SW_CLOSED:
+		query = "select count(*) from tasklist where done = 1;"
+	case SW_OVERDUE:
+		query = "select count(*) from tasklist where done = 0 and due between '2000-01-01' and ?;"
+	}
+	err = db.QueryRow(query, time.Now()).Scan(&count)
+	return
 }
 
 func CountGroup(db *sql.DB, sw int) (vs Values, err error) {
-    query := `
+	query := `
         select g.name, count(*)
         from
             taskgroup g
@@ -202,17 +185,17 @@ func CountGroup(db *sql.DB, sw int) (vs Values, err error) {
         order by g.id;
 
     `
-    switch sw {
-    case SW_ALL:
-        query = `
+	switch sw {
+	case SW_ALL:
+		query = `
             select g.name, count(*)
             from
                 taskgroup g
                 join tasklist t on t.group_id = g.id
             group by g.name;
         `
-    case SW_CLOSED:
-        query = `
+	case SW_CLOSED:
+		query = `
             select g.name, count(*)
             from
                 taskgroup g
@@ -221,8 +204,8 @@ func CountGroup(db *sql.DB, sw int) (vs Values, err error) {
             group by g.name
             order by g.id;
         `
-    case SW_OVERDUE:
-        query = `
+	case SW_OVERDUE:
+		query = `
             select g.name, count(*)
             from
                 taskgroup g
@@ -233,40 +216,40 @@ func CountGroup(db *sql.DB, sw int) (vs Values, err error) {
             group by g.name
             order by g.name;
         `
-    }
+	}
 
-    rows, err := db.Query(query, time.Now()) 
-    if err != nil {
-        return 
-    }
-    defer rows.Close()
-    
-    for rows.Next() {
-        var v Value
-        if err = rows.Scan(&v.Name, &v.Value); err != nil {
-            return
-        }
-        vs = append(vs, v)
-    }
-    return
+	rows, err := db.Query(query, time.Now())
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var v Value
+		if err = rows.Scan(&v.Name, &v.Value); err != nil {
+			return
+		}
+		vs = append(vs, v)
+	}
+	return
 }
 
 func CountPrompt(db *sql.DB) (open, overdue int, err error) {
-    query := "select count(*) from tasklist where done = 0;"
-    err = db.QueryRow(query).Scan(&open)
-    if err != nil {
-        open = -1
-    }
-    query = "select count(*) from tasklist where done = 0 and due < ?;"
-    err = db.QueryRow(query, NullNow()).Scan(&overdue)
-    if err != nil {
-        overdue = -1
-    }
-    return 
+	query := "select count(*) from tasklist where done = 0;"
+	err = db.QueryRow(query).Scan(&open)
+	if err != nil {
+		open = -1
+	}
+	query = "select count(*) from tasklist where done = 0 and due < ?;"
+	err = db.QueryRow(query, NullNow()).Scan(&overdue)
+	if err != nil {
+		overdue = -1
+	}
+	return
 }
 
 func List(db *sql.DB, sw int) (tl TaskList, err error) {
-    query := `
+	query := `
         select 
             t.id, t.description, t.priority, t.done, t.due, t.completed, t.created, t.updated
             , g.id, g.name, g.created, g.updated
@@ -278,9 +261,9 @@ func List(db *sql.DB, sw int) (tl TaskList, err error) {
         order by
             t.priority desc, t.due nulls last, g.name 
     `
-    switch sw {
-    case SW_CLOSED:
-        query = `
+	switch sw {
+	case SW_CLOSED:
+		query = `
             select 
                 t.id, t.description, t.priority, t.done, t.due, t.completed, t.created, t.updated
                 , g.id, g.name, g.created, g.updated
@@ -292,8 +275,8 @@ func List(db *sql.DB, sw int) (tl TaskList, err error) {
             order by
                 g.name, t.completed desc
         `
-    case SW_ALL:
-        query = `
+	case SW_ALL:
+		query = `
             select 
                 t.id, t.description, t.priority, t.done, t.due, t.completed, t.created, t.updated
                 , g.id, g.name, g.created, g.updated
@@ -303,8 +286,8 @@ func List(db *sql.DB, sw int) (tl TaskList, err error) {
             order by
                 t.done, t.priority desc, t.due, g.name 
         `
-    case SW_OVERDUE:
-        query = `
+	case SW_OVERDUE:
+		query = `
             select 
                 t.id, t.description, t.priority, t.done, t.due, t.completed, t.created, t.updated
                 , g.id, g.name, g.created, g.updated
@@ -317,23 +300,22 @@ func List(db *sql.DB, sw int) (tl TaskList, err error) {
             order by
                 t.priority desc, t.due, g.name 
         `
-    }
+	}
 
-    rows, err := db.Query(query, NullNow()) 
-    if err != nil {
-        return 
-    }
-    defer rows.Close()
-    
-    for rows.Next() {
-        var t Task
-        if err = rows.Scan(&t.Id, &t.Description, &t.Priority, &t.Done, &t.Due, &t.Completed, &t.Created, &t.Updated,
-                &t.Group.Id, &t.Group.Name, &t.Group.Created, &t.Group.Updated); 
-            err != nil {
-            return
-        }
-        tl = append(tl, t)
-    }
-    err = rows.Err()
-    return 
+	rows, err := db.Query(query, NullNow())
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var t Task
+		if err = rows.Scan(&t.Id, &t.Description, &t.Priority, &t.Done, &t.Due, &t.Completed, &t.Created, &t.Updated,
+			&t.Group.Id, &t.Group.Name, &t.Group.Created, &t.Group.Updated); err != nil {
+			return
+		}
+		tl = append(tl, t)
+	}
+	err = rows.Err()
+	return
 }
