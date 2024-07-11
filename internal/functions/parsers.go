@@ -48,7 +48,6 @@ func MapCommand() map[string]int {
         "--help":   CMD_HELP,
         "-h":       CMD_HELP,
         "version":  CMD_VERSION,
-        "ver":      CMD_VERSION,
         "v":        CMD_VERSION,
         "--version":CMD_VERSION,
         "-v":       CMD_VERSION,
@@ -86,6 +85,7 @@ const (
 func MapArgument() map[string]int {
     return map[string]int{
         "--open":       SW_OPEN,
+        "--completed":  SW_CLOSED,
         "--closed":     SW_CLOSED,
         "-c":           SW_CLOSED,
         "--all":        SW_ALL,

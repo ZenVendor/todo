@@ -11,7 +11,7 @@ import (
 	f "github.com/ZenVendor/todo/internal/functions"
 )
 
-const VERSION = "0.8.0"
+const VERSION = "0.9.0"
 
 //go:embed help.txt
 var helpString string

@@ -52,6 +52,8 @@ func (conf *Config) Prepare(local, reset bool) {
         if err = os.MkdirAll(configDir, 0700); err != nil {
             log.Fatal(err)
         }
+    } else {
+        log.Println("Config dir exists.")
     }
     if reset {
         log.Printf("RESET: Removing config and db files\n")
@@ -69,8 +71,13 @@ func (conf *Config) Prepare(local, reset bool) {
         if err := os.WriteFile(configFile, []byte(writeConf), 0700); err != nil {
             log.Fatal(err) 
         }
+    } else {
+        log.Println("Config file exists.")
     }
 
+    if _, err := os.Stat(filepath.Join(conf.DBLocation, conf.DBName)); !os.IsNotExist(err) {
+        log.Println("Database file exists.")
+    }
     log.Printf("Opening/Creating database file.")
     db, err := conf.OpenDB()
     if err != nil {
