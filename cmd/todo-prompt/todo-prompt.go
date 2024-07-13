@@ -2,30 +2,15 @@ package main
 
 import (
 	"fmt"
-	"os"
 
-	"github.com/ZenVendor/todo/internal/functions"
+	f "github.com/ZenVendor/todo/internal/functions"
 )
 
 
 
 func main() {
-    
-    home, ok := os.LookupEnv("HOME")
-    if !ok {
-        fmt.Print("[!]")
-        return
-    }
-    configFile := fmt.Sprintf("%s/.config/todo/todo.yml", home)
-    if _, err := os.Stat(configFile); os.IsNotExist(err) {
-        fmt.Print("[!]")
-        return
-    }
-    var conf functions.Config
-    if err := conf.ReadConfig(configFile); err != nil {
-        fmt.Print("[!]")
-        return
-    }
+    var conf f.Config
+    conf.ReadConfig()
     db, err := conf.OpenDB() 
     if err != nil {
         fmt.Print("[!]")
@@ -33,7 +18,7 @@ func main() {
     }
     defer db.Close()
 
-    op, od, _ := functions.CountPrompt(db)
+    op, od, _ := f.CountPrompt(db)
     prompt := fmt.Sprintf("[%d:%d]", op, od)
     if op + od == -2 {
         fmt.Print("[!]")

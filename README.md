@@ -1,32 +1,32 @@
 
 # TODO CLI app
-While TODO apps are a dev learning meme, I found that I'm having trouble keeping track of things. 
-Also, I've been trying to find a meaningful project for a beginner, so it made sense.
-
-This is a simple command line TODO program.
+This is a simple Linux command line TODO program.
 It does one thing at a time, by design. 
 
 There is also a second executable, todo-prompt, displaying count of open and overdue tasks as [0:0] for use in PS1 string.
 
 ## Config
-There is a simple config file using YAML format.
-The program first checks current directory and $HOME/.config/todo dir for existenece of the config file and uses the first one it finds. If it doesn't find anything, a default config is created.
+There is a config file using YAML format. It is created with prepare command.
+Prepare command by default creates the config in $XDG_CONFIG_HOME or $HOME/.config/todo if the former is not set.
+Using --local argument creates the files in current directory. 
+Main program looks for the config file in the current dir, XDG_CONFIG_HOME and then $HOME/.config/todo  
 
-* Default config dir: $HOME/.config/todo
-* Default config file: todo.yml
+* Default config file: todo_config.yml
 * Default db file: todo.db
 
 ### Config parameters:
 * dblocation: $HOME/.config/todo/
-* dbname: "todo"
+* dbname: "todo.db"
 * dateformat "2006-01-02"
 
 ## Functionality
 
 1. **Current functions:**
-	* Add task with or without due date
-    * Update task description and/or due date
-    * Remove due date
+	* Add task
+    * Update task 
+    * Set task completed
+    * Reopen task
+    * Delete task
 	* List tasks (default)
 		* open (default)
 		* closed
@@ -37,29 +37,33 @@ The program first checks current directory and $HOME/.config/todo dir for existe
 		* closed
 		* all
 		* overdue
-	* Set task completed
-	* Reopen task
-    * Delete task
-
-2. **Planned functions**
-    * Priority
-	* Task groups (projects)
-	* File support - csv/json/something else?
 
 ## Use
 
-todo [command] [id] [options] [argument]
+todo [command] [required-argument] [options] [arguments]
 	
 Program can be executed without any additional argument (defaults to listing open tasks). Other than that a command must follow with optional switches or arguments.
+Providing invalid date with --due (e.g. --due -) removes due date.
 
     help | h | --help | -h
 
-    add | a [description] [due]
+    version | v | --version | -v
+
+    prepare | prep
+        --local
+
+    reset 
+        --local
+
+    add | a [description] 
+        --due [date]
+        --priority [number]
+        --group [group_name]
 
     count                     
-    --completed | -c
-    --overdue | -o
-    --all | -a
+        --completed | -c
+        --overdue | -o
+        --all | -a
 
     list | l                 
         --completed | -c
@@ -69,6 +73,8 @@ Program can be executed without any additional argument (defaults to listing ope
     update | u [id]         
         --desc [description] 
         --due [date]
+        --priority [number]
+        --group [group_name]
 
     complete | c [task_id] 
 
@@ -80,7 +86,7 @@ Program can be executed without any additional argument (defaults to listing ope
 ```
 todo
 todo a "New task"
-todo add "New task" "2024-08-13"
+todo add "New task" --due "2024-08-13" --group "Project" --priority 2
 todo list --all
 todo l -o
 todo count -c

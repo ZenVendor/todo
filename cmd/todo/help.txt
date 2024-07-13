@@ -13,7 +13,7 @@ Commands:
     
     help | h | --help | -h                      Display this help
 
-    version | | v | --version | -v              Display program version
+    version | v | --version | -v              Display program version
 
     count                                       Display task count. A switch is optional
         --open                                      default
