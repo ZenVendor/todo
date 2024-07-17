@@ -11,6 +11,12 @@ import (
 
 const VERSION = "0.9.1"
 
+const C_RED = "\033[38;5;9m"
+const C_RED_B = "\033[1;38;5;9m"
+const C_ORANGE = "\033[38;5;214m"
+const C_YELLOW = "\033[38;5;226m"
+const C_RESET = "\033[0m"
+
 //go:embed help.txt
 var helpString string
 
@@ -19,6 +25,10 @@ func PrintVersion() {
 }
 func PrintHelp() {
 	fmt.Println(helpString)
+}
+
+func Color(text, color string) string {
+    return fmt.Sprintf("%s%s%s", color, text, C_RESET)
 }
 
 func main() {
@@ -164,7 +174,7 @@ func main() {
 		for _, t := range tl {
 			tStatus := "Open"
 			if t.Done == 0 && t.Due.Valid && t.Due.Time.Before(time.Now()) {
-				tStatus = "Overdue"
+				tStatus = Color("Overdue", C_RED_B)
 			}
 			if t.Done == 1 {
 				tStatus = "Closed"
