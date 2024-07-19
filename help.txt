@@ -13,7 +13,7 @@ Commands:
     
     help | h | --help | -h                      Display this help
 
-    version | v | --version | -v              Display program version
+    version | v | --version | -v                Display program version
 
     count                                       Display task count. A switch is optional
         --open                                      default
@@ -21,7 +21,7 @@ Commands:
         --overdue | --od | -o
         --all | -a
 
-    list | l                                    List tasks. A switch is optional
+    list | l                                    List tasks. This is a default action. A switch is optional
         --open                                      default 
         --completed | --closed |-c
         --overdue | --od | -o
@@ -31,6 +31,8 @@ Commands:
         --due [date]                                date in configured format; default: YYYY-MM-DD
         --priority | --pty [number]
         --group [text]
+
+    show | s [task_id]                          Display task details
 
     update | u [task_id]                        Update the task. At least one argument is required
         --description | --desc [text]           

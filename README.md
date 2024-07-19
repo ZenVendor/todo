@@ -3,8 +3,6 @@
 This is a simple Linux command line TODO program.
 It does one thing at a time, by design. 
 
-There is also a second executable, todo-prompt, displaying count of open and overdue tasks as [0:0] for use in PS1 string.
-
 ## Config
 There is a config file using YAML format. It is created with prepare command.
 Prepare command by default creates the config in $XDG_CONFIG_HOME or $HOME/.config/todo if the former is not set.
@@ -24,6 +22,7 @@ Main program looks for the config file in the current dir, XDG_CONFIG_HOME and t
 1. **Current functions:**
 	* Add task
     * Update task 
+    * Display task details
     * Set task completed
     * Reopen task
     * Delete task
@@ -69,8 +68,10 @@ Providing invalid date with --due (e.g. --due -) removes due date.
         --completed | -c
         --overdue | -o
         --all | -a
+
+    show | s [task_id]
         
-    update | u [id]         
+    update | u [task_id]         
         --desc [description] 
         --due [date]
         --priority [number]

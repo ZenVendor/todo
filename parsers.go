@@ -25,6 +25,7 @@ const (
 	CMD_VERSION
 	CMD_PREPARE
 	CMD_RESET
+    CMD_SHOW
 )
 
 func MapCommand() map[string]int {
@@ -54,6 +55,8 @@ func MapCommand() map[string]int {
 		"prepare":   CMD_PREPARE,
 		"prep":      CMD_PREPARE,
 		"reset":     CMD_RESET,
+        "show":      CMD_SHOW,
+        "s":        CMD_SHOW,
 	}
 }
 
@@ -212,7 +215,7 @@ func (vals ArgVals) ReadValue(cmd, sw int, dateFormat string) interface{} {
 		switch cmd {
 		case CMD_ADD:
 			return vals[idx].value
-		case CMD_UPDATE, CMD_DELETE, CMD_REOPEN, CMD_COMPLETE:
+		case CMD_UPDATE, CMD_DELETE, CMD_REOPEN, CMD_COMPLETE, CMD_SHOW:
 			n, err := strconv.Atoi(vals[idx].value)
 			if err != nil {
 				log.Printf("Invalid ID value: %s", vals[idx].value)
