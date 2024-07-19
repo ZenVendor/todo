@@ -11,10 +11,13 @@ import (
 
 const VERSION = "0.9.1"
 
+const C_WHITE = "\033[37m"
+const C_GREY = "\033[38;5;7m"
 const C_RED = "\033[38;5;9m"
-const C_RED_B = "\033[1;38;5;9m"
 const C_ORANGE = "\033[38;5;214m"
 const C_YELLOW = "\033[38;5;226m"
+const C_GREEN = "\033[38;5;40m"
+const C_BOLD = "\033[1m"
 const C_RESET = "\033[0m"
 
 //go:embed help.txt
@@ -27,7 +30,10 @@ func PrintHelp() {
 	fmt.Println(helpString)
 }
 
-func Color(text, color string) string {
+func Color(text, color string, bold bool) string {
+    if bold {
+        color = fmt.Sprintf("%s%s", color, C_BOLD)
+    }
     return fmt.Sprintf("%s%s%s", color, text, C_RESET)
 }
 
@@ -174,7 +180,7 @@ func main() {
 		for _, t := range tl {
 			tStatus := "Open"
 			if t.Done == 0 && t.Due.Valid && t.Due.Time.Before(time.Now()) {
-				tStatus = Color("Overdue", C_RED_B)
+				tStatus = Color("Overdue", C_RED, true)
 			}
 			if t.Done == 1 {
 				tStatus = "Closed"
@@ -190,4 +196,32 @@ func main() {
 			}
 		}
 	}
+    if cmd == CMD_SHOW {
+		var t Task
+
+		t.Id = vals.ReadValue(cmd, SW_DEFAULT, conf.DateFormat).(int)
+		if err = t.Select(db); err != nil {
+			log.Fatal(err)
+		}
+
+        tStatus := "Open"
+        if t.Done == 0 && t.Due.Valid && t.Due.Time.Before(time.Now()) {
+            tStatus = Color("Overdue", C_RED, true)
+        }
+        if t.Done == 1 {
+            tStatus = Color("Closed", C_GREEN, false)
+        }
+
+        fmt.Printf("Task ID: %d\n", t.Id, )
+        fmt.Printf("Status: %s\n", tStatus)
+        fmt.Printf("Group: %s\n", t.Group.Name)
+        
+        fmt.Printf("Priority: %d\n", t.Priority)
+        if t.Due.Valid {
+            fmt.Printf("Due: %s\n", t.Due.Time.Format(conf.DateFormat))
+        }
+        fmt.Printf("\n%s\n\n", Color(t.Description, C_WHITE, true))
+        meta := fmt.Sprintf("Created: %s\nUpdated: %s\n", t.Created.Time.Format(conf.DateFormat), t.Updated.Time.Format(conf.DateFormat)) 
+        fmt.Print(Color(meta, C_GREY, false))
+    }
 }
