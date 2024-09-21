@@ -5,7 +5,9 @@ import (
 	_ "embed"
 	"fmt"
 	"log"
+	"os"
 	"slices"
+    "github.com/nonerkao/color-aware-tabwriter"
 	"time"
 )
 
@@ -31,10 +33,10 @@ func PrintHelp() {
 }
 
 func Color(text, color string, bold bool) string {
-    if bold {
-        color = fmt.Sprintf("%s%s", color, C_BOLD)
-    }
-    return fmt.Sprintf("%s%s%s", color, text, C_RESET)
+	if bold {
+		color = fmt.Sprintf("%s%s", color, C_BOLD)
+	}
+	return fmt.Sprintf("%s%s%s", color, text, C_RESET)
 }
 
 func main() {
@@ -175,28 +177,33 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("%s tasks: %d\n", MapArgumentDescription()[sw], count)
+		fmt.Printf("%s%s tasks: %d%s\n", C_BOLD, MapArgumentDescription()[sw], count, C_RESET)
+
+		w := tabwriter.NewWriter(os.Stdout, 4, 0, 2, ' ', 0)
+        fmt.Fprintf(w, "%s\tID\tGroup\tStatus\tDue\tDescription%s\n", C_BOLD, C_RESET)
 
 		for _, t := range tl {
+			lColor := C_WHITE
 			tStatus := "Open"
+
 			if t.Done == 0 && t.Due.Valid && t.Due.Time.Before(time.Now()) {
-				tStatus = Color("Overdue", C_RED, true)
+				tStatus = "Overdue"
+				lColor = C_RED
 			}
 			if t.Done == 1 {
 				tStatus = "Closed"
+				lColor = C_GREEN
 			}
-			if t.Done == 0 {
-				if !t.Due.Valid {
-					fmt.Printf("\t%s :: %s %d: %s\n", t.Group.Name, tStatus, t.Id, t.Description)
-				} else {
-					fmt.Printf("\t%s :: %s %d: %s, due date: %s\n", t.Group.Name, tStatus, t.Id, t.Description, t.Due.Time.Format(conf.DateFormat))
-				}
-			} else {
-				fmt.Printf("\t%s :: %s %d: %s, completed: %s\n", t.Group.Name, tStatus, t.Id, t.Description, t.Completed.Time.Format(conf.DateFormat))
+			tDue := HumanDue(t.Due.Time, conf.DateFormat)
+			if !t.Due.Valid {
+				tDue = ""
 			}
+
+			fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s%s\n", lColor, t.Id, t.Group.Name, tStatus, tDue, t.Description, C_RESET)
 		}
+		w.Flush()
 	}
-    if cmd == CMD_SHOW {
+	if cmd == CMD_SHOW {
 		var t Task
 
 		t.Id = vals.ReadValue(cmd, SW_DEFAULT, conf.DateFormat).(int)
@@ -204,24 +211,24 @@ func main() {
 			log.Fatal(err)
 		}
 
-        tStatus := "Open"
-        if t.Done == 0 && t.Due.Valid && t.Due.Time.Before(time.Now()) {
-            tStatus = Color("Overdue", C_RED, true)
-        }
-        if t.Done == 1 {
-            tStatus = Color("Closed", C_GREEN, false)
-        }
+		tStatus := "Open"
+		if t.Done == 0 && t.Due.Valid && t.Due.Time.Before(time.Now()) {
+			tStatus = Color("Overdue", C_RED, true)
+		}
+		if t.Done == 1 {
+			tStatus = Color("Closed", C_GREEN, false)
+		}
 
-        fmt.Printf("Task ID: %d\n", t.Id, )
-        fmt.Printf("Status: %s\n", tStatus)
-        fmt.Printf("Group: %s\n", t.Group.Name)
-        
-        fmt.Printf("Priority: %d\n", t.Priority)
-        if t.Due.Valid {
-            fmt.Printf("Due: %s\n", t.Due.Time.Format(conf.DateFormat))
-        }
-        fmt.Printf("\n%s\n\n", Color(t.Description, C_WHITE, true))
-        meta := fmt.Sprintf("Created: %s\nUpdated: %s\n", t.Created.Time.Format(conf.DateFormat), t.Updated.Time.Format(conf.DateFormat)) 
-        fmt.Print(Color(meta, C_GREY, false))
-    }
+		fmt.Printf("Task ID: %d\n", t.Id)
+		fmt.Printf("Status: %s\n", tStatus)
+		fmt.Printf("Group: %s\n", t.Group.Name)
+
+		fmt.Printf("Priority: %d\n", t.Priority)
+		if t.Due.Valid {
+			fmt.Printf("Due: %s\n", t.Due.Time.Format(conf.DateFormat))
+		}
+		fmt.Printf("\n%s\n\n", Color(t.Description, C_WHITE, true))
+		meta := fmt.Sprintf("Created: %s\nUpdated: %s\n", t.Created.Time.Format(conf.DateFormat), t.Updated.Time.Format(conf.DateFormat))
+		fmt.Print(Color(meta, C_GREY, false))
+	}
 }

@@ -1,5 +1,7 @@
 github.com/mattn/go-sqlite3 v1.14.22 h1:2gZY6PC6kBnID23Tichd1K+Z0oS6nE/XwU+Vz/5o4kU=
 github.com/mattn/go-sqlite3 v1.14.22/go.mod h1:Uh1q+B4BYcTPb+yiD3kU8Ct7aC0hY9fxUwlHK0RXw+Y=
+github.com/nonerkao/color-aware-tabwriter v0.0.0-20171005123016-aa1eec33dba0 h1:n+K6XQ4trNid9Xx8IMmF5dMpVr+on+fARUGbrwnMGBA=
+github.com/nonerkao/color-aware-tabwriter v0.0.0-20171005123016-aa1eec33dba0/go.mod h1:umYEty3HEy2Bqp12eAS92VbfQChgQ34AAEEaDHpTnPY=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v2 v2.4.0 h1:D8xgwECY7CYvx+Y2n4sBz93Jn9JRvxdiyyo8CTfuKaY=
