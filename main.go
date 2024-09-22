@@ -4,10 +4,10 @@ import (
 	"database/sql"
 	_ "embed"
 	"fmt"
+	"github.com/nonerkao/color-aware-tabwriter"
 	"log"
 	"os"
 	"slices"
-    "github.com/nonerkao/color-aware-tabwriter"
 	"time"
 )
 
@@ -180,7 +180,7 @@ func main() {
 		fmt.Printf("%s%s tasks: %d%s\n", C_BOLD, MapArgumentDescription()[sw], count, C_RESET)
 
 		w := tabwriter.NewWriter(os.Stdout, 4, 0, 2, ' ', 0)
-        fmt.Fprintf(w, "%s\tID\tGroup\tStatus\tDue\tDescription%s\n", C_BOLD, C_RESET)
+		fmt.Fprintf(w, "%s\tID\tGroup\tStatus\tDue\tDescription%s\n", C_BOLD, C_RESET)
 
 		for _, t := range tl {
 			lColor := C_WHITE
