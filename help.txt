@@ -2,12 +2,12 @@
 Usage: 
     todo [command] [required-argument] [option] [argument]
 
-Without arguments defaults to listing active tasks.
+Without arguments the command defaults to listing active tasks.
 Frequently used commands have single-letter aliases.
-In ADD command, description is required and must be provided first, due date can optionally be provided second.
-In UPDATE the switches and their following values can be provided in any order.
+In ADD command, description is required and must be provided first.
 In commands that require it, task ID must follow the command.
-Due date must match the format, default is "YYYY-MM-DD". 
+Switches and their following values can be provided in any order.
+Due date must match the configured format, default is "YYYY-MM-DD". Invalid value removes the due date.
 
 Commands:
     
@@ -17,13 +17,13 @@ Commands:
 
     count                                       Display task count. A switch is optional
         --open                                      default
-        --completed | --closed |-c
+        --completed |-c
         --overdue | --od | -o
         --all | -a
 
     list | l                                    List tasks. This is a default action. A switch is optional
         --open                                      default 
-        --completed | --closed |-c
+        --completed |-c
         --overdue | --od | -o
         --all | -a
         

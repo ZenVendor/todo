@@ -5,15 +5,17 @@ import (
 	_ "embed"
 	"fmt"
 	"log"
+	"os"
 	"slices"
+	"text/tabwriter"
 	"time"
 )
 
 const VERSION = "0.9.1"
 
-const C_WHITE = "\033[37m"
+const C_WHITE = "\033[37;0;00m"
 const C_GREY = "\033[38;5;7m"
-const C_RED = "\033[38;5;9m"
+const C_RED = "\033[38;5;09m"
 const C_ORANGE = "\033[38;5;214m"
 const C_YELLOW = "\033[38;5;226m"
 const C_GREEN = "\033[38;5;40m"
@@ -175,26 +177,31 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("%s tasks: %d\n", MapArgumentDescription()[sw], count)
+		fmt.Printf("%s%s tasks: %d%s\n", C_BOLD, MapArgumentDescription()[sw], count, C_RESET)
+
+        w := tabwriter.NewWriter(os.Stdout, 4, 0, 2, ' ', 0)
+        //fmt.Fprintf(w, "%s\tID\tGroup\tStatus\tDue\tDescription%s\n", C_BOLD, C_RESET)
 
 		for _, t := range tl {
+            lColor := C_WHITE
 			tStatus := "Open"
+            
 			if t.Done == 0 && t.Due.Valid && t.Due.Time.Before(time.Now()) {
-				tStatus = Color("Overdue", C_RED, true)
+				tStatus = "Overdue"
+                lColor = C_RED
 			}
 			if t.Done == 1 {
 				tStatus = "Closed"
+                lColor = C_GREEN
 			}
-			if t.Done == 0 {
-				if !t.Due.Valid {
-					fmt.Printf("\t%s :: %s %d: %s\n", t.Group.Name, tStatus, t.Id, t.Description)
-				} else {
-                    fmt.Printf("\t%s :: %s %d: %s, due: %s\n", t.Group.Name, tStatus, t.Id, t.Description, HumanDue(t.Due.Time, conf.DateFormat))
-				}
-			} else {
-				fmt.Printf("\t%s :: %s %d: %s, completed: %s\n", t.Group.Name, tStatus, t.Id, t.Description, t.Completed.Time.Format(conf.DateFormat))
-			}
+            tDue := HumanDue(t.Due.Time, conf.DateFormat)
+            if !t.Due.Valid {
+                tDue = ""
+            }
+
+            fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s%s\n", lColor, t.Id, t.Group.Name, tStatus, tDue, t.Description, C_RESET)
 		}
+        w.Flush()
 	}
 	if cmd == CMD_SHOW {
 		var t Task
