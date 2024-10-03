@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const VERSION = "0.9.1"
+const VERSION = "1.0.0"
 
 const C_WHITE = "\033[37m"
 const C_GREY = "\033[38;5;7m"
@@ -186,13 +186,21 @@ func main() {
 			lColor := C_WHITE
 			tStatus := "Open"
 
-			if t.Done == 0 && t.Due.Valid && t.Due.Time.Before(time.Now()) {
-				tStatus = "Overdue"
-				lColor = C_RED
-			}
 			if t.Done == 1 {
 				tStatus = "Closed"
 				lColor = C_GREEN
+			}
+			if t.Done == 0 && t.Due.Valid {
+				if t.Due.Time.Sub(time.Now()).Hours() > 120 && t.Due.Time.Sub(time.Now()).Hours() <= 240 {
+					lColor = C_YELLOW
+				}
+				if t.Due.Time.Sub(time.Now()).Hours() <= 120 {
+					lColor = C_ORANGE
+				}
+				if t.Due.Time.Before(time.Now()) {
+					tStatus = "Overdue"
+					lColor = C_RED
+				}
 			}
 			tDue := HumanDue(t.Due.Time, conf.DateFormat)
 			if !t.Due.Valid {
