@@ -12,9 +12,10 @@ import (
 const CONFIG_FN = "todo_config.yml"
 
 type Config struct {
-	DBLocation string `yaml:"dblocation"`
-	DBName     string `yaml:"dbname"`
-	DateFormat string `yaml:"dateformat"`
+	DBLocation   string `yaml:"dblocation"`
+	DBName       string `yaml:"dbname"`
+	DateFormat   string `yaml:"dateformat"`
+	UseNerdFonts bool   `yaml:"usenerdfonts"`
 }
 
 func OpenLogFile(path string) (*os.File, error) {
@@ -41,9 +42,11 @@ func (conf *Config) Prepare(local, reset bool) {
 	}
 	log.Printf("Config dir: %s\n", configDir)
 
+	// default config
 	conf.DBLocation = configDir
 	conf.DBName = "todo.db"
 	conf.DateFormat = "2006-01-02"
+	conf.UseNerdFonts = false
 
 	configFile := filepath.Join(configDir, CONFIG_FN)
 
