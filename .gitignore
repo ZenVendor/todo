@@ -1,6 +1,6 @@
-*.db
-*.csv
 doc/
 build/
 vendor/
+*.db
+*.csv
 go.sum
