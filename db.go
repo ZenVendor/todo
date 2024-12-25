@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	_ "github.com/glebarez/go-sqlite"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func NullNow() sql.NullTime {
@@ -40,7 +40,7 @@ type Value struct {
 type Values []Value
 
 func (conf *Config) OpenDB() (db *sql.DB, err error) {
-	db, err = sql.Open("sqlite", filepath.Join(conf.DBLocation, conf.DBName))
+	db, err = sql.Open("sqlite3", filepath.Join(conf.DBLocation, conf.DBName))
 	return
 }
 
