@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	_ "embed"
 	"fmt"
 	"github.com/nonerkao/color-aware-tabwriter"
 	"log"
@@ -11,58 +10,31 @@ import (
 	"time"
 )
 
-const VERSION = "1.0.0"
-
-const C_WHITE = "\033[37m"
-const C_GREY = "\033[38;5;7m"
-const C_RED = "\033[38;5;9m"
-const C_ORANGE = "\033[38;5;214m"
-const C_YELLOW = "\033[38;5;226m"
-const C_GREEN = "\033[38;5;40m"
-const C_BOLD = "\033[1m"
-const C_RESET = "\033[0m"
-
-//go:embed help.txt
-var helpString string
-
-func PrintVersion() {
-	fmt.Printf("TODO CLI\tversion: %s\n", VERSION)
-}
-func PrintHelp() {
-	fmt.Println(helpString)
-}
-
-func Color(text, color string, bold bool) string {
-	if bold {
-		color = fmt.Sprintf("%s%s", color, C_BOLD)
-	}
-	return fmt.Sprintf("%s%s%s", color, text, C_RESET)
-}
-
 func main() {
 	var conf Config
-
-	cmd, sw, vals, err := ParseArgs(CMD_LIST, SW_OPEN)
-
-	if err != nil || cmd == CMD_HELP {
-		PrintVersion()
-		PrintHelp()
+	args := os.Args[1:]
+	parser, err := NewParser(V_LIST, []int{A_OPEN}, map[int]interface{}{})
+	if err != nil {
 		log.Fatal(err)
 	}
-	if cmd == CMD_VERSION {
+	if err = parser.Parse(args); err != nil {
+		log.Fatal(err)
+	}
+
+	if parser.Verb.Verb == V_HELP {
+		PrintVersion()
+		PrintHelp()
+		return
+	}
+	if parser.Verb.Verb == V_VERSION {
 		PrintVersion()
 		return
 	}
-	if cmd == CMD_PREPARE || cmd == CMD_RESET {
-		local := false
-		if sw == SW_LOCAL {
-			local = true
-		}
-		reset := false
-		if cmd == CMD_RESET {
-			reset = true
-		}
-		conf.Prepare(local, reset)
+	if parser.Verb.Verb == V_CONFIGURE {
+		conf.Prepare(
+			parser.ArgIsPresent(A_LOCAL),
+			parser.ArgIsPresent(A_RESET),
+		)
 		return
 	}
 
@@ -73,8 +45,8 @@ func main() {
 	}
 	defer db.Close()
 
-	if cmd == CMD_COUNT {
-		count, err := CountTask(db, sw)
+	if parser.Verb.Verb == V_COUNT {
+		count, err := CountTask(db, parser.GetArg(0))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -82,33 +54,33 @@ func main() {
 		return
 	}
 
-	if slices.Contains([]int{CMD_COMPLETE, CMD_DELETE, CMD_REOPEN, CMD_UPDATE}, cmd) {
+	if slices.Contains([]int{V_COMPLETE, V_DELETE, V_REOPEN, V_UPDATE}, parser.Verb.Verb) {
 		var t Task
 		addGroup := false
 
-		t.Id = vals.ReadValue(cmd, SW_DEFAULT, conf.DateFormat).(int)
+		t.Id = parser.Kwargs[K_ID].(int)
 		if err = t.Select(db); err != nil {
 			log.Fatal(err)
 		}
-		switch cmd {
-		case CMD_COMPLETE:
+		switch parser.Verb.Verb {
+		case V_COMPLETE:
 			t.Done = 1
 			t.Completed = NullNow()
-		case CMD_REOPEN:
+		case V_REOPEN:
 			t.Done = 0
 			t.Completed.Valid = false
-		case CMD_UPDATE:
-			if vals.ValueIsSet(SW_DESCRIPTION) {
-				t.Description = vals.ReadValue(cmd, SW_DESCRIPTION, conf.DateFormat).(string)
+		case V_UPDATE:
+			if short, ok := parser.Kwargs[K_SHORT]; ok {
+				t.Description = short.(string)
 			}
-			if vals.ValueIsSet(SW_PRIORITY) {
-				t.Priority = vals.ReadValue(cmd, SW_PRIORITY, conf.DateFormat).(int)
+			if priority, ok := parser.Kwargs[K_PRIORITY]; ok {
+				t.Priority = priority.(int)
 			}
-			if vals.ValueIsSet(SW_DUE) {
-				t.Due = vals.ReadValue(cmd, SW_DUE, conf.DateFormat).(sql.NullTime)
+			if duedate, ok := parser.Kwargs[K_DUEDATE]; ok {
+				t.Due = duedate.(sql.NullTime)
 			}
-			if vals.ValueIsSet(SW_GROUP) {
-				t.Group.Name = vals.ReadValue(cmd, SW_GROUP, conf.DateFormat).(string)
+			if group, ok := parser.Kwargs[K_GROUP]; ok {
+				t.Group.Name = group.(string)
 				if err = t.Group.Select(db, true); err == sql.ErrNoRows {
 					addGroup = true
 				}
@@ -116,7 +88,7 @@ func main() {
 		}
 		t.Updated = NullNow()
 
-		if cmd == CMD_DELETE {
+		if parser.Verb.Verb == V_DELETE {
 			err = t.Delete(db)
 		} else {
 			if addGroup {
@@ -131,28 +103,28 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("Task %d has been %sd.\n", t.Id, MapCommandDescription()[cmd])
+		fmt.Printf("Task %d has been added.\n", t.Id)
 	}
 
-	if cmd == CMD_ADD {
+	if parser.Verb.Verb == V_ADD {
 		var t Task
 		//t.Id
-		t.Description = vals.ReadValue(cmd, SW_DEFAULT, conf.DateFormat).(string)
+		t.Description = parser.Kwargs[K_SHORT].(string)
 		t.Priority = 1
-		if vals.ValueIsSet(SW_PRIORITY) {
-			t.Priority = vals.ReadValue(cmd, SW_PRIORITY, conf.DateFormat).(int)
+		if priority, ok := parser.Kwargs[K_PRIORITY]; ok {
+			t.Priority = priority.(int)
 		}
 		t.Done = 0
 		//t.Due
-		if vals.ValueIsSet(SW_DUE) {
-			t.Due = vals.ReadValue(cmd, SW_DUE, conf.DateFormat).(sql.NullTime)
+		if duedate, ok := parser.Kwargs[K_DUEDATE]; ok {
+			t.Due = duedate.(sql.NullTime)
 		}
 		//t.Completed
 		t.Created = NullNow()
 		t.Updated = NullNow()
 		t.Group.Name = "Default"
-		if vals.ValueIsSet(SW_GROUP) {
-			t.Group.Name = vals.ReadValue(cmd, SW_GROUP, conf.DateFormat).(string)
+		if group, ok := parser.Kwargs[K_GROUP]; ok {
+			t.Group.Name = group.(string)
 		}
 		if err = t.Group.Select(db, true); err == sql.ErrNoRows {
 			t.Group.Created = NullNow()
@@ -168,16 +140,16 @@ func main() {
 		fmt.Printf("Added task %d: %s\n", t.Id, t.Description)
 	}
 
-	if cmd == CMD_LIST {
-		count, err := CountTask(db, sw)
+	if parser.Verb.Verb == V_LIST {
+		count, err := CountTask(db, parser.GetArg(0))
 		if err != nil {
 			log.Fatal(err)
 		}
-		tl, err := List(db, sw)
+		tl, err := List(db, parser.GetArg(0))
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("%s%s tasks: %d%s\n", C_BOLD, MapArgumentDescription()[sw], count, C_RESET)
+		fmt.Printf("%stasks: %d%s\n", C_BOLD, count, C_RESET)
 
 		w := tabwriter.NewWriter(os.Stdout, 4, 0, 2, ' ', 0)
 		fmt.Fprintf(w, "%s\tID\tGroup\tStatus\tDue\tDescription%s\n", C_BOLD, C_RESET)
@@ -211,10 +183,10 @@ func main() {
 		}
 		w.Flush()
 	}
-	if cmd == CMD_SHOW {
+	if parser.Verb.Verb == V_SHOW {
 		var t Task
 
-		t.Id = vals.ReadValue(cmd, SW_DEFAULT, conf.DateFormat).(int)
+		t.Id = parser.Kwargs[K_ID].(int)
 		if err = t.Select(db); err != nil {
 			log.Fatal(err)
 		}

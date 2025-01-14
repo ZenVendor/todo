@@ -1,6 +1,5 @@
-
 # TODO CLI app
-This is a simple Linux command line TODO program.
+This is a command line TODO program.
 It does one thing at a time, by design. 
 
 ## Config
@@ -39,49 +38,57 @@ Main program looks for the config file in the current dir, XDG_CONFIG_HOME and t
 
 ## Use
 
-todo [command] [required-argument] [options] [arguments]
+todo [verb] [required_value] [args] [kwargs]
 	
 Program can be executed without any additional argument (defaults to listing open tasks). Other than that a command must follow with optional switches or arguments.
 Providing invalid date with --due (e.g. --due -) removes due date.
 
-    help | h | --help | -h
 
-    version | v | --version | -v
 
-    prepare | prep
+
+    add, a [short_description]
+        --due, -d [date]
+        --group, -g [group_name]
+        --long, -l [long_description]
+        --priority, -p [number]
+        --taskid, -t [task_id]
+
+    complete, c [task_id] 
+        --comment, -c [closing_comment]
+
+    configure 
         --local
-
-    reset 
-        --local
-
-    add | a [description] 
-        --due [date]
-        --priority [number]
-        --group [group_name]
+        --reset
 
     count                     
-        --completed | -c
-        --overdue | -o
-        --all | -a
+        --all, -a
+        --completed, -c
+        --due, -d
+        --overdue, -o
 
-    list | l                 
-        --completed | -c
-        --overdue | -o
-        --all | -a
+    delete [task_id]
 
-    show | s [task_id]
+    help, h 
+
+    list, l                 
+        --all, -a
+        --completed, -c
+        --due, -d
+        --overdue, -o
+
+    reopen, r [task_id]
+
+    show, s [task_id]
         
-    update | u [task_id]         
-        --desc [description] 
-        --due [date]
-        --priority [number]
-        --group [group_name]
+    update, u [task_id]         
+        --due, -d [date]
+        --group, -g [group_name]
+        --long, -l [long_description]
+        --priority, -p [number]
+        --short, -s [short_description] 
+        --taskid, -t [task_id]
 
-    complete | c [task_id] 
-
-    reopen | open [task_id]
-
-    delete | del [task_id]
+    version, v 
 
 ## Examples
 ```
@@ -96,5 +103,6 @@ todo u 10 --due -
 todo c 12
 todo reopen 3
 todo del 5
-```
+``` 
+
 

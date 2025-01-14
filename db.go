@@ -163,11 +163,11 @@ func (g TaskGroup) Delete(db *sql.DB) (err error) {
 func CountTask(db *sql.DB, sw int) (count int, err error) {
 	query := "select count(*) from tasklist where done = 0;"
 	switch sw {
-	case SW_ALL:
+	case A_ALL:
 		query = "select count(*) from tasklist;"
-	case SW_CLOSED:
+	case A_CLOSED:
 		query = "select count(*) from tasklist where done = 1;"
-	case SW_OVERDUE:
+	case A_OVERDUE:
 		query = "select count(*) from tasklist where done = 0 and due between '2000-01-01' and ?;"
 	}
 	err = db.QueryRow(query, time.Now()).Scan(&count)
@@ -186,7 +186,7 @@ func CountGroup(db *sql.DB, sw int) (vs Values, err error) {
 
     `
 	switch sw {
-	case SW_ALL:
+	case A_ALL:
 		query = `
             select g.name, count(*)
             from
@@ -194,7 +194,7 @@ func CountGroup(db *sql.DB, sw int) (vs Values, err error) {
                 join tasklist t on t.group_id = g.id
             group by g.name;
         `
-	case SW_CLOSED:
+	case A_CLOSED:
 		query = `
             select g.name, count(*)
             from
@@ -204,7 +204,7 @@ func CountGroup(db *sql.DB, sw int) (vs Values, err error) {
             group by g.name
             order by g.id;
         `
-	case SW_OVERDUE:
+	case A_OVERDUE:
 		query = `
             select g.name, count(*)
             from
@@ -262,7 +262,7 @@ func List(db *sql.DB, sw int) (tl TaskList, err error) {
             t.priority desc, t.due nulls last, g.name 
     `
 	switch sw {
-	case SW_CLOSED:
+	case A_CLOSED:
 		query = `
             select 
                 t.id, t.description, t.priority, t.done, t.due, t.completed, t.created, t.updated
@@ -275,7 +275,7 @@ func List(db *sql.DB, sw int) (tl TaskList, err error) {
             order by
                 g.name, t.completed desc
         `
-	case SW_ALL:
+	case A_ALL:
 		query = `
             select 
                 t.id, t.description, t.priority, t.done, t.due, t.completed, t.created, t.updated
@@ -286,7 +286,7 @@ func List(db *sql.DB, sw int) (tl TaskList, err error) {
             order by
                 t.done, t.priority desc, t.due, g.name 
         `
-	case SW_OVERDUE:
+	case A_OVERDUE:
 		query = `
             select 
                 t.id, t.description, t.priority, t.done, t.due, t.completed, t.created, t.updated
