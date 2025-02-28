@@ -65,10 +65,10 @@ func main() {
 		switch parser.Verb.Verb {
 		case V_COMPLETE:
 			t.Done = 1
-			t.Completed = NullNow()
+			t.DateCompleted = NullNow()
 		case V_REOPEN:
 			t.Done = 0
-			t.Completed.Valid = false
+			t.DateCompleted.Valid = false
 		case V_UPDATE:
 			if short, ok := parser.Kwargs[K_SHORT]; ok {
 				t.Description = short.(string)
@@ -77,7 +77,7 @@ func main() {
 				t.Priority = priority.(int)
 			}
 			if duedate, ok := parser.Kwargs[K_DUEDATE]; ok {
-				t.Due = duedate.(sql.NullTime)
+				t.DateDue = duedate.(sql.NullTime)
 			}
 			if group, ok := parser.Kwargs[K_GROUP]; ok {
 				t.Group.Name = group.(string)
@@ -86,14 +86,14 @@ func main() {
 				}
 			}
 		}
-		t.Updated = NullNow()
+		t.SysDateUpdated = NullNow()
 
 		if parser.Verb.Verb == V_DELETE {
 			err = t.Delete(db)
 		} else {
 			if addGroup {
-				t.Group.Created = NullNow()
-				t.Group.Updated = NullNow()
+				t.Group.SysDateCreated = NullNow()
+				t.Group.SysDateUpdated = NullNow()
 				if err = t.Group.Insert(db); err != nil {
 					log.Fatal(err)
 				}
@@ -117,18 +117,18 @@ func main() {
 		t.Done = 0
 		//t.Due
 		if duedate, ok := parser.Kwargs[K_DUEDATE]; ok {
-			t.Due = duedate.(sql.NullTime)
+			t.DateDue = duedate.(sql.NullTime)
 		}
 		//t.Completed
-		t.Created = NullNow()
-		t.Updated = NullNow()
+		t.SysDateCreated = NullNow()
+		t.SysDateUpdated = NullNow()
 		t.Group.Name = "Default"
 		if group, ok := parser.Kwargs[K_GROUP]; ok {
 			t.Group.Name = group.(string)
 		}
 		if err = t.Group.Select(db, true); err == sql.ErrNoRows {
-			t.Group.Created = NullNow()
-			t.Group.Updated = NullNow()
+			t.Group.SysDateCreated = NullNow()
+			t.Group.SysDateUpdated = NullNow()
 			if err = t.Group.Insert(db); err != nil {
 				log.Fatal(err)
 			}
@@ -162,20 +162,20 @@ func main() {
 				tStatus = "Closed"
 				lColor = C_GREEN
 			}
-			if t.Done == 0 && t.Due.Valid {
-				if t.Due.Time.Sub(time.Now()).Hours() > 120 && t.Due.Time.Sub(time.Now()).Hours() <= 240 {
+			if t.Done == 0 && t.DateDue.Valid {
+				if t.DateDue.Time.Sub(time.Now()).Hours() > 120 && t.DateDue.Time.Sub(time.Now()).Hours() <= 240 {
 					lColor = C_YELLOW
 				}
-				if t.Due.Time.Sub(time.Now()).Hours() <= 120 {
+				if t.DateDue.Time.Sub(time.Now()).Hours() <= 120 {
 					lColor = C_ORANGE
 				}
-				if t.Due.Time.Before(time.Now()) {
+				if t.DateDue.Time.Before(time.Now()) {
 					tStatus = "Overdue"
 					lColor = C_RED
 				}
 			}
-			tDue := HumanDue(t.Due.Time, conf.DateFormat)
-			if !t.Due.Valid {
+			tDue := HumanDue(t.DateDue.Time, conf.DateFormat)
+			if !t.DateDue.Valid {
 				tDue = ""
 			}
 
@@ -192,7 +192,7 @@ func main() {
 		}
 
 		tStatus := "Open"
-		if t.Done == 0 && t.Due.Valid && t.Due.Time.Before(time.Now()) {
+		if t.Done == 0 && t.DateDue.Valid && t.DateDue.Time.Before(time.Now()) {
 			tStatus = Color("Overdue", C_RED, true)
 		}
 		if t.Done == 1 {
@@ -204,11 +204,11 @@ func main() {
 		fmt.Printf("Group: %s\n", t.Group.Name)
 
 		fmt.Printf("Priority: %d\n", t.Priority)
-		if t.Due.Valid {
-			fmt.Printf("Due: %s\n", t.Due.Time.Format(conf.DateFormat))
+		if t.DateDue.Valid {
+			fmt.Printf("Due: %s\n", t.DateDue.Time.Format(conf.DateFormat))
 		}
 		fmt.Printf("\n%s\n\n", Color(t.Description, C_WHITE, true))
-		meta := fmt.Sprintf("Created: %s\nUpdated: %s\n", t.Created.Time.Format(conf.DateFormat), t.Updated.Time.Format(conf.DateFormat))
+		meta := fmt.Sprintf("Created: %s\nUpdated: %s\n", t.SysDateCreated.Time.Format(conf.DateFormat), t.SysDateUpdated.Time.Format(conf.DateFormat))
 		fmt.Print(Color(meta, C_GREY, false))
 	}
 }
