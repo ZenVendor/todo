@@ -52,7 +52,7 @@ where 1=1
     and t.status_id = 1;
 
 -- open
-create view task_list_ongoing as
+create view task_list_open as
 select 
     t.id 
     , t.summary
@@ -203,7 +203,7 @@ select
     , sum(case when status_id = 2 then 1 else 0 end) as count_in_progress
     , sum(case when status_id = 3 then 1 else 0 end) as count_on_hold
     , sum(case when status_id = 4 then 1 else 0 end) as count_completed
-    , sum(case when status_id in (1, 2, 3) then 1 else 0 end) as count_ongoing
+    , sum(case when status_id in (1, 2, 3) then 1 else 0 end) as count_open
     , sum(case when date_due < current_date then 1 else 0 end) as count_overdue
 from 
     Tasks t
@@ -221,7 +221,7 @@ select
     , sum(case when t.status_id = 2 then 1 else 0 end) as count_in_progress
     , sum(case when t.status_id = 3 then 1 else 0 end) as count_on_hold
     , sum(case when t.status_id = 4 then 1 else 0 end) as count_completed
-    , sum(case when t.status_id in (1, 2, 3) then 1 else 0 end) as count_ongoing
+    , sum(case when t.status_id in (1, 2, 3) then 1 else 0 end) as count_open
     , sum(case when t.date_due < current_date then 1 else 0 end) as count_overdue
 from 
     Groups g
@@ -239,7 +239,7 @@ select
     , sum(case when t.status_id = 2 then 1 else 0 end) as count_in_progress
     , sum(case when t.status_id = 3 then 1 else 0 end) as count_on_hold
     , sum(case when t.status_id = 4 then 1 else 0 end) as count_completed
-    , sum(case when t.status_id in (1, 2, 3) then 1 else 0 end) as count_ongoing
+    , sum(case when t.status_id in (1, 2, 3) then 1 else 0 end) as count_open
     , sum(case when t.date_due < current_date then 1 else 0 end) as count_overdue
 from 
     Statuses s

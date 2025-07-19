@@ -10,7 +10,8 @@ type Verb struct {
 	Verb          int
 	RequiredValue int
 	ValidArgs     []int
-	MaxArgsNo     int
+    ValidKwargs []int
+	MaxArgs     int
 }
 type Verbs []Verb
 
@@ -83,7 +84,7 @@ func NewParser(defaultVerb int, defaultArgs []int, defaultKwargs map[int]interfa
 
 func (p *Parser) Parse(args []string) error {
 	if len(args) == 0 {
-		if p.Verb.Verb == INVALID_ARG {
+		if p.Verb.Verb == X_NIL {
 			return ErrNoArguments
 		}
 		return nil
@@ -102,7 +103,7 @@ func (p *Parser) Parse(args []string) error {
 		if len(args) < 2 {
 			return fmt.Errorf("%w: \"%s\"", ErrVerbRequiresValue, args[0])
 		}
-		verbVal, err := kwargValidatorMap()[p.Verb.RequiredValue](args[1])
+		verbVal, err := validatorMap[p.Verb.RequiredValue](args[1])
 		if err != nil {
 			return err
 		}
@@ -114,34 +115,33 @@ func (p *Parser) Parse(args []string) error {
 		kwarg := strings.SplitN(arg, "=", 2)
 		if len(kwarg) == 1 {
 			sw := argMap[kwarg[0]]
-			if sw == INVALID_ARG {
+			if sw == X_NIL {
 				return fmt.Errorf("%w: %s", ErrInvalidArgument, arg)
 			}
 			if !slices.Contains(p.Verb.ValidArgs, sw) {
 				return fmt.Errorf("%w: %s", ErrInvalidVerbArgument, arg)
 			}
 			p.Args = append(p.Args, sw)
-			if len(p.Args) > p.Verb.MaxArgsNo {
+			if len(p.Args) > p.Verb.MaxArgs {
 				return ErrTooManyArguments
 			}
 		} else {
 			key := kwargMap[kwarg[0]]
-			if key == INVALID_ARG {
+			if key == X_NIL {
 				err := fmt.Errorf("%w: %s", ErrInvalidArgument, arg)
 				return err
 			}
 			value := kwarg[1]
-			if !slices.Contains(p.Verb.ValidArgs, key) {
+			if !slices.Contains(p.Verb.ValidKwargs, key) {
 				return fmt.Errorf("%w: %s", ErrInvalidVerbArgument, arg)
 			}
-			val, err := kwargValidatorMap()[key](value)
+			val, err := validatorMap[key](value)
 			if err != nil {
 				return err
 			}
 			p.Kwargs[key] = val
 		}
 	}
-
 	return nil
 }
 
@@ -154,10 +154,10 @@ func (p *Parser) ArgIsPresent(arg int) bool {
 
 func (p *Parser) GetArg(index int) int {
 	if len(p.Args) == 0 {
-		return INVALID_ARG
+		return X_NIL
 	}
 	if index < 0 || index >= len(p.Args) {
-		return INVALID_ARG
+		return X_NIL
 	}
 	return p.Args[index]
 }

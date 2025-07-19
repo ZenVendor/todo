@@ -124,17 +124,14 @@ func (conf *Config) ReadConfig() {
 				conf.DBLocation = filepath.Dir("")
 			}
 
-			//log.Printf("Opening database file: %s/%s", conf.DBLocation, conf.DBName)
 			db, err := conf.OpenDB()
 			if err != nil {
 				log.Fatal(err)
 			}
 			defer db.Close()
 
-			//log.Printf("Checking tables.")
 			if !TableExists(db) {
-				fmt.Printf("Tables do not exist. Run todo prepare.\n")
-				//log.Fatal("Tables do not exist.\n")
+				fmt.Printf("Tables do not exist. Run \"todo prepare\".\n")
 			}
 			break
 		}

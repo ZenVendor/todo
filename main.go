@@ -13,7 +13,7 @@ import (
 func main() {
 	var conf Config
 	args := os.Args[1:]
-	parser, err := NewParser(V_LIST, []int{A_ONGOING}, map[int]interface{}{})
+	parser, err := NewParser(V_LIST, []int{A_OPEN}, map[int]interface{}{})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -46,10 +46,27 @@ func main() {
 	defer db.Close()
 
 	if parser.Verb.Verb == V_COUNT {
-		count, err := CountTask(db, parser.GetArg(0))
-		if err != nil {
+        var c Counts
+        if err = c.GetCounts(db); err != nil {
 			log.Fatal(err)
 		}
+        var count int
+        switch parser.GetArg(0) {
+            case A_ALL:
+                count = c.All
+            case A_NEW:
+                count = c.New
+            case A_INPROGRESS:
+                count = c.InProgress
+            case A_ONHOLD:
+                count = c.OnHold
+            case A_COMPLETED:
+                count = c.Completed
+            case A_OPEN:
+                count = c.Open
+            case A_OVERDUE:
+                count = c.Overdue
+        }
 		fmt.Printf("%d", count)
 		return
 	}
@@ -59,19 +76,17 @@ func main() {
 		addGroup := false
 
 		t.Id = parser.Kwargs[K_ID].(int)
-		if err = t.Select(db); err != nil {
+		if err = t.GetById(db); err != nil {
 			log.Fatal(err)
 		}
 		switch parser.Verb.Verb {
 		case V_COMPLETE:
-			t.Done = 1
 			t.DateCompleted = NullNow()
 		case V_REOPEN:
-			t.Done = 0
 			t.DateCompleted.Valid = false
 		case V_UPDATE:
-			if short, ok := parser.Kwargs[K_SHORT]; ok {
-				t.Description = short.(string)
+			if summary, ok := parser.Kwargs[K_SUMMARY]; ok {
+				t.Summary = summary.(string)
 			}
 			if priority, ok := parser.Kwargs[K_PRIORITY]; ok {
 				t.Priority = priority.(int)
@@ -81,20 +96,17 @@ func main() {
 			}
 			if group, ok := parser.Kwargs[K_GROUP]; ok {
 				t.Group.Name = group.(string)
-				if err = t.Group.Select(db, true); err == sql.ErrNoRows {
+				if err = t.Group.GetByName(db); err == sql.ErrNoRows {
 					addGroup = true
 				}
 			}
 		}
-		t.SysDateUpdated = NullNow()
 
 		if parser.Verb.Verb == V_DELETE {
 			err = t.Delete(db)
 		} else {
 			if addGroup {
-				t.Group.SysDateCreated = NullNow()
-				t.Group.SysDateUpdated = NullNow()
-				if err = t.Group.Insert(db); err != nil {
+				if err = t.Group.Add(db); err != nil {
 					log.Fatal(err)
 				}
 			}
@@ -109,31 +121,28 @@ func main() {
 	if parser.Verb.Verb == V_ADD {
 		var t Task
 		//t.Id
-		t.Description = parser.Kwargs[K_SHORT].(string)
-		t.Priority = 1
+		t.Description = parser.Kwargs[K_SUMMARY].(string)
+		t.Priority = 500
 		if priority, ok := parser.Kwargs[K_PRIORITY]; ok {
 			t.Priority = priority.(int)
 		}
-		t.Done = 0
 		//t.Due
 		if duedate, ok := parser.Kwargs[K_DUEDATE]; ok {
 			t.DateDue = duedate.(sql.NullTime)
 		}
 		//t.Completed
-		t.SysDateCreated = NullNow()
-		t.SysDateUpdated = NullNow()
+		t.DateCreated = NullNow()
+		t.DateUpdated = NullNow()
 		t.Group.Name = "Default"
 		if group, ok := parser.Kwargs[K_GROUP]; ok {
 			t.Group.Name = group.(string)
 		}
-		if err = t.Group.Select(db, true); err == sql.ErrNoRows {
-			t.Group.SysDateCreated = NullNow()
-			t.Group.SysDateUpdated = NullNow()
-			if err = t.Group.Insert(db); err != nil {
+		if err = t.Group.GetByName(db); err == sql.ErrNoRows {
+			if err = t.Group.Add(db); err != nil {
 				log.Fatal(err)
 			}
 		}
-		if err = t.Insert(db); err != nil {
+		if err = t.Add(db); err != nil {
 			log.Fatal(err)
 		}
 
@@ -145,7 +154,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		tl, err := List(db, parser.GetArg(0))
+		tl, err := ListTasks(db)
 		if err != nil {
 			log.Fatal(err)
 		}

@@ -24,7 +24,7 @@ func validatePriority(value string) (interface{}, error) {
 	return strconv.Atoi(value)
 }
 
-func validateShort(value string) (interface{}, error) {
+func validateSummary(value string) (interface{}, error) {
 	short := strings.TrimSpace(value)
 	if len([]byte(short)) > 255 {
 		return "", fmt.Errorf("%w: %d/255", ErrStringLength, len([]byte(short)))

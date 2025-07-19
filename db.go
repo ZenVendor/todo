@@ -15,40 +15,40 @@ func NullNow() sql.NullTime {
 
 type Task struct {
 	Id             int
-    Summary        string
-    Priority       int
-    DateDue        sql.NullTime
-    DateCompleted  sql.NullTime
-    Description    string
+	Summary        string
+	Priority       int
+	DateDue        sql.NullTime
+	DateCompleted  sql.NullTime
+	Description    string
 	ClosingComment string
 	Status         *Status
 	Group          *Group
 	Parent         *Task
-    DateCreated     sql.NullTime
-    DateUpdated     sql.NullTime
-    SysStatus       int
+	DateCreated    sql.NullTime
+	DateUpdated    sql.NullTime
+	SysStatus      int
 }
 type TaskList []Task
 
 type Group struct {
-	Id             int
-	Name           string
-    Counts      *Counts
+	Id     int
+	Name   string
+	Counts *Counts
 }
 type Status struct {
-	Id   int
-	Name string
-    Counts  *Counts
+	Id     int
+	Name   string
+	Counts *Counts
 }
 
 type Counts struct {
-    all int
-    new int
-    inProgress int
-    onHold int
-    completed int
-    ongoing int
-    overdue int
+	All        int
+	New        int
+	InProgress int
+	OnHold     int
+	Completed  int
+	Open        int
+	Overdue    int
 }
 
 type Value struct {
@@ -116,9 +116,9 @@ func (t *Task) Add(db *sql.DB) (err error) {
 		t.Summary,
 		t.Priority,
 		t.DateDue,
-        t.Description,
+		t.Description,
 		t.Group.Id,
-        t.Parent.Id,
+		t.Parent.Id,
 	)
 	if err != nil {
 		return err
@@ -163,38 +163,38 @@ func (t *Task) GetById(db *sql.DB) (err error) {
         WHERE id = ?;
     `
 	err = db.QueryRow(query, t.Id).Scan(
-        &t.Id,
-        &t.Summary,
-        &t.Priority,
-        &t.DateDue,
-        &t.DateCompleted,
-        &t.Description,
-        &t.ClosingComment,
-        &t.Status.Id,
-        &t.Status.Name,
-        &t.Group.Id,
-        &t.Group.Name,
-        &t.Parent.Id,
-        &t.DateCreated,
-        &t.DateUpdated,
-        &t.SysStatus,
+		&t.Id,
+		&t.Summary,
+		&t.Priority,
+		&t.DateDue,
+		&t.DateCompleted,
+		&t.Description,
+		&t.ClosingComment,
+		&t.Status.Id,
+		&t.Status.Name,
+		&t.Group.Id,
+		&t.Group.Name,
+		&t.Parent.Id,
+		&t.DateCreated,
+		&t.DateUpdated,
+		&t.SysStatus,
 	)
 	return err
 }
 
 func (g *Group) GetById(db *sql.DB) (err error) {
-    err = db.QueryRow(
-        "SELECT id, group_name FROM Groups WHERE id = ?;",
-        g.Id,
-    ).Scan(&g.Id, &g.Name)
+	err = db.QueryRow(
+		"SELECT id, group_name FROM Groups WHERE id = ?;",
+		g.Id,
+	).Scan(&g.Id, &g.Name)
 	return err
 }
 
 func (g *Group) GetByName(db *sql.DB) (err error) {
-    err = db.QueryRow(
-        "SELECT id, group_name FROM Groups WHERE group_name = ?;",
-        g.Name,
-    ).Scan(&g.Id, &g.Name)
+	err = db.QueryRow(
+		"SELECT id, group_name FROM Groups WHERE group_name = ?;",
+		g.Name,
+	).Scan(&g.Id, &g.Name)
 	return err
 }
 
@@ -223,7 +223,7 @@ func (t Task) Update(db *sql.DB) (err error) {
 		t.ClosingComment,
 		t.Status.Id,
 		t.Group.Id,
-        t.Parent.Id,
+		t.Parent.Id,
 		t.Id,
 	)
 	return err
@@ -254,10 +254,8 @@ func (g Group) Delete(db *sql.DB) (err error) {
 	return err
 }
 
-
-
 func ListTasks(db *sql.DB) (tl TaskList, err error) {
-    query := `
+	query := `
         SELECT 
             id 
             , summary
@@ -296,10 +294,10 @@ func ListTasks(db *sql.DB) (tl TaskList, err error) {
 			&t.Status.Name,
 			&t.Group.Id,
 			&t.Group.Name,
-            &t.Parent.Id,
-            &t.DateCreated,
-            &t.DateUpdated,
-            &t.SysStatus,
+			&t.Parent.Id,
+			&t.DateCreated,
+			&t.DateUpdated,
+			&t.SysStatus,
 		); err != nil {
 			return tl, err
 		}
@@ -310,75 +308,75 @@ func ListTasks(db *sql.DB) (tl TaskList, err error) {
 }
 
 func (c *Counts) GetCounts(db *sql.DB) (err error) {
-    query := `
+	query := `
         SELECT 
             count_all
             , count_new
             , count_in_progress
             , count_on_hold
             , count_completed
-            , count_ongoing
+            , count_open
             , count_overdue
         FROM task_counts
     `
 	err = db.QueryRow(query).Scan(
-        &c.all,
-        &c.new,
-        &c.inProgress,
-        &c.onHold,
-        &c.completed,
-        &c.ongoing,
-        &c.overdue,
-    )
+		&c.All,
+		&c.New,
+		&c.InProgress,
+		&c.OnHold,
+		&c.Completed,
+		&c.Open,
+		&c.Overdue,
+	)
 	return err
 }
 
 func (g *Group) GetCounts(db *sql.DB) (err error) {
-    query := `
+	query := `
         SELECT 
             count_all
             , count_new
             , count_in_progress
             , count_on_hold
             , count_completed
-            , count_ongoing
+            , count_open
             , count_overdue
         FROM group_counts
         WHERE id = ?;
     `
 	err = db.QueryRow(query, g.Id).Scan(
-        &g.Counts.all,
-        &g.Counts.new,
-        &g.Counts.inProgress,
-        &g.Counts.onHold,
-        &g.Counts.completed,
-        &g.Counts.ongoing,
-        &g.Counts.overdue,
-    )
+		&g.Counts.All,
+		&g.Counts.New,
+		&g.Counts.InProgress,
+		&g.Counts.OnHold,
+		&g.Counts.Completed,
+		&g.Counts.Open,
+		&g.Counts.Overdue,
+	)
 	return err
 }
 
 func (s *Status) GetCounts(db *sql.DB) (err error) {
-    query := `
+	query := `
         SELECT 
             count_all
             , count_new
             , count_in_progress
             , count_on_hold
             , count_completed
-            , count_ongoing
+            , count_open
             , count_overdue
         FROM status_counts
         WHERE id = ?;
     `
 	err = db.QueryRow(query, s.Id).Scan(
-        &s.Counts.all,
-        &s.Counts.new,
-        &s.Counts.inProgress,
-        &s.Counts.onHold,
-        &s.Counts.completed,
-        &s.Counts.ongoing,
-        &s.Counts.overdue,
-    )
+		&s.Counts.All,
+		&s.Counts.New,
+		&s.Counts.InProgress,
+		&s.Counts.OnHold,
+		&s.Counts.Completed,
+		&s.Counts.Open,
+		&s.Counts.Overdue,
+	)
 	return err
 }
