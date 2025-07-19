@@ -6,7 +6,7 @@ It does one thing at a time, by design.
 There is a config file using YAML format. It is created with prepare command.
 Prepare command by default creates the config in $XDG_CONFIG_HOME or $HOME/.config/todo if the former is not set.
 Using --local argument creates the files in current directory. 
-Main program looks for the config file in the current dir, XDG_CONFIG_HOME and then $HOME/.config/todo  
+Main program looks for the config file in the current dir, XDG_CONFIG_HOME and then $HOME/.config/todo.  
 
 * Default config file: todo_config.yml
 * Default db file: todo.db
@@ -14,7 +14,7 @@ Main program looks for the config file in the current dir, XDG_CONFIG_HOME and t
 ### Config parameters:
 * dblocation: $HOME/.config/todo/
 * dbname: "todo.db"
-* dateformat "2006-01-02"
+* dateformat "2006-01-02" - this uses go date format. Whatever format is required, write this date.
 
 ## Functionality
 
@@ -26,14 +26,22 @@ Main program looks for the config file in the current dir, XDG_CONFIG_HOME and t
     * Reopen task
     * Delete task
 	* List tasks (default)
-		* open (default)
-		* closed
-		* all
+        * all
+        * completed
+        * due
+        * in progress
+        * new
+        * ongoing (default, includes new, in progress and on hold)
+        * on hold
 		* overdue
 	* Print task count (to be used for prompt indicator)
-		* open (default)
-		* closed
-		* all
+        * all
+        * completed
+        * due
+        * in progress
+        * new
+		* ongoing (default)
+        * on hold
 		* overdue
 
 ## Use

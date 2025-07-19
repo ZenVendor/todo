@@ -15,28 +15,40 @@ func NullNow() sql.NullTime {
 
 type Task struct {
 	Id             int
-	Short          string
-	Priority       int
-	DateDue        sql.NullTime
-	DateCompleted  sql.NullTime
-	Long           string
+    Summary        string
+    Priority       int
+    DateDue        sql.NullTime
+    DateCompleted  sql.NullTime
+    Description    string
 	ClosingComment string
 	Status         *Status
 	Group          *Group
 	Parent         *Task
+    DateCreated     sql.NullTime
+    DateUpdated     sql.NullTime
+    SysStatus       int
 }
 type TaskList []Task
 
 type Group struct {
 	Id             int
 	Name           string
-	SysDateCreated sql.NullTime
-	SysDateUpdated sql.NullTime
-	SysStatus      int
+    Counts      *Counts
 }
 type Status struct {
 	Id   int
 	Name string
+    Counts  *Counts
+}
+
+type Counts struct {
+    all int
+    new int
+    inProgress int
+    onHold int
+    completed int
+    ongoing int
+    overdue int
 }
 
 type Value struct {
@@ -63,7 +75,7 @@ func TableExists(db *sql.DB) bool {
 
 func CreateTable(db *sql.DB) error {
 	query := `
-        create table tasklist (
+        create table Tasks (
             id integer primary key not null,
             short text not null,
             priority integer null,
@@ -90,14 +102,23 @@ func CreateTable(db *sql.DB) error {
 	return err
 }
 
-func (t *Task) Insert(db *sql.DB) (err error) {
-	result, err := db.Exec(
-		"INSERT INTO Task (short, priority, date_due, status_id, group_id) VALUES (?, ?, ?, ?, ?);",
-		t.Short,
+func (t *Task) Add(db *sql.DB) (err error) {
+	result, err := db.Exec(`
+        INSERT INTO Tasks (
+            summary
+            , priority
+            , date_due
+            , description
+            , group_id
+            , parent_id
+        ) VALUES (?, ?, ?, ?, ?, ?);
+        `,
+		t.Summary,
 		t.Priority,
 		t.DateDue,
-		t.Status.Id,
+        t.Description,
 		t.Group.Id,
+        t.Parent.Id,
 	)
 	if err != nil {
 		return err
@@ -107,9 +128,9 @@ func (t *Task) Insert(db *sql.DB) (err error) {
 	return err
 }
 
-func (g *Group) Insert(db *sql.DB) (err error) {
+func (g *Group) Add(db *sql.DB) (err error) {
 	result, err := db.Exec(
-		"INSERT INTO Group (name) VALUES (?);",
+		"INSERT INTO Groups (group_name) VALUES (?);",
 		g.Name,
 	)
 	if err != nil {
@@ -119,82 +140,90 @@ func (g *Group) Insert(db *sql.DB) (err error) {
 	g.Id = int(id)
 	return err
 }
-func (t *Task) Select(db *sql.DB) (err error) {
+
+func (t *Task) GetById(db *sql.DB) (err error) {
 	query := `
         SELECT 
-            t.id
-            , t.short
-            , t.priority
-            , t.date_due
-            , t.date_completed
-            , t.long
-            , t.closing_comment
-            , s.id
-            , s.name
-            , g.id
-            , g.name
-        FROM
-            Task t
-            JOIN Status s ON s.id = t.status_id
-            JOIN Group g ON g.id = t.group_id
-        WHERE
-            t.id = ?;
+            id 
+            , summary
+            , priority
+            , date_due
+            , date_completed
+            , description
+            , closing_comment
+            , status_id
+            , status_name
+            , group_id
+            , group_name
+            , parent_id
+            , sys_created
+            , sys_updated
+            , sys_status
+        FROM task_list_all;
+        WHERE id = ?;
     `
 	err = db.QueryRow(query, t.Id).Scan(
-		&t.Id,
-		&t.Short,
-		&t.Priority,
-		&t.DateDue,
-		&t.DateCompleted,
-		&t.Long,
-		&t.ClosingComment,
-		&t.Status.Id,
-		&t.Status.Name,
-		&t.Group.Id,
-		&t.Group.Name,
+        &t.Id,
+        &t.Summary,
+        &t.Priority,
+        &t.DateDue,
+        &t.DateCompleted,
+        &t.Description,
+        &t.ClosingComment,
+        &t.Status.Id,
+        &t.Status.Name,
+        &t.Group.Id,
+        &t.Group.Name,
+        &t.Parent.Id,
+        &t.DateCreated,
+        &t.DateUpdated,
+        &t.SysStatus,
 	)
 	return err
 }
 
-func (g *Group) Select(db *sql.DB, byName bool) (err error) {
-	if byName {
-		err = db.QueryRow(
-			"SELECT id, name FROM Group WHERE g.name = ?;",
-			g.Name,
-		).Scan(&g.Id, &g.Name)
-	} else {
-		err = db.QueryRow(
-			"SELECT id, name FROM Group WHERE g.id = ?;",
-			g.Id,
-		).Scan(&g.Id, &g.Name)
-	}
+func (g *Group) GetById(db *sql.DB) (err error) {
+    err = db.QueryRow(
+        "SELECT id, group_name FROM Groups WHERE id = ?;",
+        g.Id,
+    ).Scan(&g.Id, &g.Name)
+	return err
+}
+
+func (g *Group) GetByName(db *sql.DB) (err error) {
+    err = db.QueryRow(
+        "SELECT id, group_name FROM Groups WHERE group_name = ?;",
+        g.Name,
+    ).Scan(&g.Id, &g.Name)
 	return err
 }
 
 func (t Task) Update(db *sql.DB) (err error) {
 	query := `
-        UPDATE Task SET 
-            short = ?
+        UPDATE Tasks SET 
+            summary = ?
             , priority = ?
             , date_due = ?
             , date_completed = ?
-            , long = ?
+            , description = ?
             , closing_comment = ?
             , status_id = ?
             , group_id = ?
-            , sys_date_updated = datetime('now')
+            , parent_id = ?
+            , sys_updated = current_timestamp
         WHERE id = ?;
     `
 	_, err = db.Exec(
 		query,
-		t.Short,
+		t.Summary,
 		t.Priority,
 		t.DateDue,
 		t.DateCompleted,
-		t.Long,
+		t.Description,
 		t.ClosingComment,
 		t.Status.Id,
 		t.Group.Id,
+        t.Parent.Id,
 		t.Id,
 	)
 	return err
@@ -202,7 +231,7 @@ func (t Task) Update(db *sql.DB) (err error) {
 
 func (g Group) Update(db *sql.DB) (err error) {
 	_, err = db.Exec(
-		"UPDATE Group SET name = ?, sys_date_updated = datetime('now') WHERE id = ?;",
+		"UPDATE Groups SET group_name = ?, sys_updated = current_timestamp WHERE id = ?;",
 		g.Name,
 		g.Id,
 	)
@@ -211,7 +240,7 @@ func (g Group) Update(db *sql.DB) (err error) {
 
 func (t Task) Delete(db *sql.DB) (err error) {
 	_, err = db.Exec(
-		"UPDATE Task SET sys_status = 0 WHERE id = ?;",
+		"UPDATE Tasks SET sys_status = 0, sys_updated = current_timestamp WHERE id = ?;",
 		t.Id,
 	)
 	return err
@@ -219,207 +248,34 @@ func (t Task) Delete(db *sql.DB) (err error) {
 
 func (g Group) Delete(db *sql.DB) (err error) {
 	_, err = db.Exec(
-		"UPDATE Group SET sys_status = 0 WHERE id = ?;",
+		"UPDATE Groups SET sys_status = 0, sys_updated = current_timestamp WHERE id = ?;",
 		g.Id,
 	)
 	return err
 }
 
-func CountTask(db *sql.DB, sw int) (count int, err error) {
-	query := "SELECT COUNT(*) FROM Task WHERE sys_status = 1 AND status_id in (0, 1, 2);"
-	switch sw {
-	case A_ALL:
-		query = "SELECT COUNT(*) FROM Task WHERE sys_status = 1;"
-	case A_CLOSED:
-		query = "SELECT COUNT(*) FROM Task WHERE sys_status = 1 AND status_id = 3;"
-	case A_OVERDUE:
-		query = "SELECT COUNT(*) FROM Task WHERE sys_status = 1 AND date('now') > date_due;"
-	}
-	err = db.QueryRow(query).Scan(&count)
-	return
-}
 
-func CountGroup(db *sql.DB, sw int) (vs Values, err error) {
-	query := `
-        SELECT g.id, g.name, COUNT(*)
-        FROM
-            Group g
-            JOIN Task t ON t.group_id = g.id
-        WHERE 
-            g.sys_status = 1
-            AND t.sys_status = 1
-            AND t.status_id IN (0, 1, 2)
-        GROUP BY g.id, g.name
-        ORDER BY g.id;
-    `
-	switch sw {
-	case A_ALL:
-		query = `
-            SELECT g.id, g.name, COUNT(*)
-            FROM
-                Group g
-                LEFT OUTER JOIN Task t ON t.group_id = g.id
-            WHERE
-                g.sys_status = 1
-                AND t.sys_status = 1
-            GROUP BY g.name
-            ORDER BY g.id;
-        `
-	case A_CLOSED:
-		query = `
-            SELECT g.id, g.name, COUNT(*)
-            FROM
-                Group g
-                JOIN Task t ON t.group_id = g.id
-            WHERE 
-                g.sys_status = 1
-                AND t.sys_status = 1
-                AND t.status_id = 3
-            GROUP BY g.id, g.name
-            ORDER BY g.id;
-        `
-	case A_OVERDUE:
-		query = `
-            SELECT g.id, g.name, COUNT(*)
-            FROM
-                Group g
-                JOIN Task t ON t.group_id = g.id
-            WHERE 
-                g.sys_status = 1
-                AND t.sys_status = 1
-                AND t.status_id IN (0, 1, 2)
-                AND date('now') > t.date_due
-            GROUP BY g.id, g.name
-            ORDER BY g.id;
-        `
-	}
 
-	rows, err := db.Query(query)
-	if err != nil {
-		return
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var v Value
-		if err = rows.Scan(&v.Name, &v.Value); err != nil {
-			return
-		}
-		vs = append(vs, v)
-	}
-	return
-}
-
-func CountPrompt(db *sql.DB) (open, overdue int, err error) {
-	err = db.QueryRow("SELECT COUNT(*) FROM Task WHERE sys_status = 1 AND status_id IN (0, 1, 2);").Scan(&open)
-	if err != nil {
-		open = -1
-	}
-	err = db.QueryRow("SELECT COUNT(*) FROM Task WHERE sys_status = 1 AND status_id IN (0, 1, 2) AND date('now') > date_due;").Scan(&overdue)
-	if err != nil {
-		overdue = -1
-	}
-	return open, overdue, err
-}
-
-func List(db *sql.DB, sw int) (tl TaskList, err error) {
-	query := `
+func ListTasks(db *sql.DB) (tl TaskList, err error) {
+    query := `
         SELECT 
-            t.id
-            , t.short
-            , t.priority
-            , t.date_due
-            , t.date_completed
-            , t.long
-            , t.closing_comment
-            , s.id
-            , s.name
-            , g.id
-            , g.name
-        FROM
-            Task t
-            JOIN Status s ON s.id = t.status_id
-            JOIN Group g ON g.id = t.group_id
-        WHERE
-            t.sys_status = 1
-            AND status_id IN (0, 1, 2)
-        ORDER BY
-            t.priority, t.date_due NULLS LAST, g.name 
+            id 
+            , summary
+            , priority
+            , date_due
+            , date_completed
+            , description
+            , closing_comment
+            , status_id
+            , status_name
+            , group_id
+            , group_name
+            , parent_id
+            , sys_created
+            , sys_updated
+            , sys_status
+        FROM task_list_all;
     `
-	switch sw {
-	case A_CLOSED:
-		query = `
-            SELECT 
-                t.id
-                , t.short
-                , t.priority
-                , t.date_due
-                , t.date_completed
-                , t.long
-                , t.closing_comment
-                , s.id
-                , s.name
-                , g.id
-                , g.name
-            FROM
-                Task t
-                JOIN Status s ON s.id = t.status_id
-                JOIN Group g ON g.id = t.group_id
-            WHERE
-                t.sys_status = 1
-                AND status_id = 3
-            ORDER BY
-                g.name, t.date_completed DESC
-        `
-	case A_ALL:
-		query = `
-            SELECT 
-                t.id
-                , t.short
-                , t.priority
-                , t.date_due
-                , t.date_completed
-                , t.long
-                , t.closing_comment
-                , s.id
-                , s.name
-                , g.id
-                , g.name
-            FROM
-                Task t
-                JOIN Status s ON s.id = t.status_id
-                JOIN Group g ON g.id = t.group_id
-            WHERE
-                t.sys_status = 1
-            ORDER BY
-                t.date_completed DESC NULLS FIRST, t.priority DESC, t.due, g.name 
-        `
-	case A_OVERDUE:
-		query = `
-            SELECT 
-                t.id
-                , t.short
-                , t.priority
-                , t.date_due
-                , t.date_completed
-                , t.long
-                , t.closing_comment
-                , s.id
-                , s.name
-                , g.id
-                , g.name
-            FROM
-                Task t
-                JOIN Status s ON s.id = t.status_id
-                JOIN Group g ON g.id = t.group_id
-            WHERE
-                t.sys_status = 1
-                AND status_id IN (0, 1, 2)
-            ORDER BY
-                t.priority, t.date_due NULLS LAST, g.name 
-        `
-	}
-
 	rows, err := db.Query(query, NullNow())
 	if err != nil {
 		return tl, err
@@ -430,21 +286,99 @@ func List(db *sql.DB, sw int) (tl TaskList, err error) {
 		var t Task
 		if err = rows.Scan(
 			&t.Id,
-			&t.Short,
+			&t.Summary,
 			&t.Priority,
 			&t.DateDue,
 			&t.DateCompleted,
-			&t.Long,
+			&t.Description,
 			&t.ClosingComment,
 			&t.Status.Id,
 			&t.Status.Name,
 			&t.Group.Id,
 			&t.Group.Name,
+            &t.Parent.Id,
+            &t.DateCreated,
+            &t.DateUpdated,
+            &t.SysStatus,
 		); err != nil {
-			return
+			return tl, err
 		}
 		tl = append(tl, t)
 	}
 	err = rows.Err()
 	return tl, err
+}
+
+func (c *Counts) GetCounts(db *sql.DB) (err error) {
+    query := `
+        SELECT 
+            count_all
+            , count_new
+            , count_in_progress
+            , count_on_hold
+            , count_completed
+            , count_ongoing
+            , count_overdue
+        FROM task_counts
+    `
+	err = db.QueryRow(query).Scan(
+        &c.all,
+        &c.new,
+        &c.inProgress,
+        &c.onHold,
+        &c.completed,
+        &c.ongoing,
+        &c.overdue,
+    )
+	return err
+}
+
+func (g *Group) GetCounts(db *sql.DB) (err error) {
+    query := `
+        SELECT 
+            count_all
+            , count_new
+            , count_in_progress
+            , count_on_hold
+            , count_completed
+            , count_ongoing
+            , count_overdue
+        FROM group_counts
+        WHERE id = ?;
+    `
+	err = db.QueryRow(query, g.Id).Scan(
+        &g.Counts.all,
+        &g.Counts.new,
+        &g.Counts.inProgress,
+        &g.Counts.onHold,
+        &g.Counts.completed,
+        &g.Counts.ongoing,
+        &g.Counts.overdue,
+    )
+	return err
+}
+
+func (s *Status) GetCounts(db *sql.DB) (err error) {
+    query := `
+        SELECT 
+            count_all
+            , count_new
+            , count_in_progress
+            , count_on_hold
+            , count_completed
+            , count_ongoing
+            , count_overdue
+        FROM status_counts
+        WHERE id = ?;
+    `
+	err = db.QueryRow(query, s.Id).Scan(
+        &s.Counts.all,
+        &s.Counts.new,
+        &s.Counts.inProgress,
+        &s.Counts.onHold,
+        &s.Counts.completed,
+        &s.Counts.ongoing,
+        &s.Counts.overdue,
+    )
+	return err
 }

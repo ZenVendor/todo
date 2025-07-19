@@ -13,7 +13,7 @@ import (
 func main() {
 	var conf Config
 	args := os.Args[1:]
-	parser, err := NewParser(V_LIST, []int{A_OPEN}, map[int]interface{}{})
+	parser, err := NewParser(V_LIST, []int{A_ONGOING}, map[int]interface{}{})
 	if err != nil {
 		log.Fatal(err)
 	}

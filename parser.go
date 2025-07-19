@@ -92,7 +92,7 @@ func (p *Parser) Parse(args []string) error {
 	p.Kwargs = map[int]interface{}{}
 
 	var err error
-	p.Verb, err = verbs.GetVerb(verbMap()[args[0]])
+	p.Verb, err = verbs.GetVerb(verbMap[args[0]])
 	if err != nil {
 		return fmt.Errorf("%w \"%s\"", ErrInvalidVerb, args[0])
 	}
@@ -113,7 +113,7 @@ func (p *Parser) Parse(args []string) error {
 	for _, arg := range args[argsStart:] {
 		kwarg := strings.SplitN(arg, "=", 2)
 		if len(kwarg) == 1 {
-			sw := argMap()[kwarg[0]]
+			sw := argMap[kwarg[0]]
 			if sw == INVALID_ARG {
 				return fmt.Errorf("%w: %s", ErrInvalidArgument, arg)
 			}
@@ -125,7 +125,7 @@ func (p *Parser) Parse(args []string) error {
 				return ErrTooManyArguments
 			}
 		} else {
-			key := kwargMap()[kwarg[0]]
+			key := kwargMap[kwarg[0]]
 			if key == INVALID_ARG {
 				err := fmt.Errorf("%w: %s", ErrInvalidArgument, arg)
 				return err

@@ -6,62 +6,77 @@ where
     and tbl_name in ('tasklist', 'taskgroup');
 
 -- Create tables
-create table tasklist (
+create schema todo;
+create table todo.task (
     id integer primary key not null,
-    short text not null,
-    priority integer not null default 50,
-    group_id integer not null,
-    done integer not null default 0,
-    long text,
-    comment text,
-    due datetime,
-    completed datetime,
-    task_id integer,
-    created datetime not null default datetime(now),
-    updated datetime not null default datetime(now)
+    group_id integer not null default 1,
+    status_id integer not null default 1,
+    priority integer not null default 500,
+    summary text not null,
+    description text,
+    closing_comment text,
+    date_due datetime,
+    date_completed datetime,
+    parent_id integer,
+    sys_created datetime not null default datetime(now),
+    sys_updated datetime not null default datetime(now),
+    sys_deleted int not null default 0
 );
-create table taskgroup (
+create table todo.group (
     id integer primary key not null,
     name text not null,
-    created datetime not null default datetime(now),
-    updated datetime not null default datetime(now)
+    sys_created datetime not null default datetime(now),
+    sys_updated datetime not null default datetime(now),
+    sys_deleted int not null default 0
 );
-insert into taskgroup (name, created, updated) values ('Default', );
+create table todo.status (
+    id integer primary key not null,
+    name text not null,
+    sys_created datetime not null default datetime(now),
+    sys_updated datetime not null default datetime(now),
+    sys_deleted int not null default 0
+);
+
+-- Sys inserts
+insert into todo.group (id, name) values (1, 'Default');
+insert into todo.status (id, name) values 
+    (1, 'New'),
+    (2, 'In Progress'),
+    (3, 'On Hold'),
+    (4, 'Completed');
 
 -- Insert task
-insert into tasklist (
-    short
+insert into todo.task (
+    group_id
     , priority
-    , group_id
-    , long
-    , comment
-    , due
-    , task_id
-) values (?, ?, ?, ?, ?, ?, ?, ?, ?);
+    , summary
+    , description
+    , date_due
+    , parent_id
+) values (?, ?, ?, ?, ?, ?);
 
 -- Insert group
-insert into taskgroup (name) values (?);
+insert into todo.group (name) values (?);
 
 -- Select task
+create view todo.taskslist_all as (
 select 
     t.id
-    , t.short
+    , t.summary
     , t.priority
     , t.done
-    , t.long
+    , t.description
     , t.comment
     , t.due
     , t.completed
-    , t.task_id
+    , t.parent_id
     , t.created
     , t.updated
     , g.id
     , g.name
-    , g.created
-    , g.updated
 from 
-    tasklist t
-    join taskgroup g on g.id = t.group_id
+    todo.task t
+    join todo.group g on g.id = t.group_id
 where 
     t.id = ?;
 
@@ -86,11 +101,11 @@ where g.id = ?;
 -- Update task
 update tasklist 
 set 
-    short = ?
+    summary = ?
     , priority = ?
     , group_id = ?
     , done = ?
-    , long = ?
+    , description = ?
     , comment = ?
     , due = ?
     , completed = ?
@@ -154,10 +169,10 @@ order by cnt;
 -- List
 select 
     t.id
-	, t.short
+	, t.summary
 	, t.priority
 	, t.done
-    , t.long
+    , t.description
     , t.comment
 	, t.due
 	, t.completed
@@ -179,10 +194,10 @@ order by
 
 select 
     t.id
-	, t.short
+	, t.summary
 	, t.priority
 	, t.done
-    , t.long
+    , t.description
     , t.comment
 	, t.due
 	, t.completed
@@ -205,10 +220,10 @@ order by
 
 select 
     t.id
-	, t.short
+	, t.summary
 	, t.priority
 	, t.done
-    , t.long
+    , t.description
     , t.comment
 	, t.due
 	, t.completed
@@ -231,11 +246,10 @@ order by
 
 select 
     t.id
-	, t.short
+	, t.summary
 	, t.priority
-	, t.done
-    , t.long
-    , t.comment
+    , t.description
+    , t.closing_comment
 	, t.due
 	, t.completed
     , t.task_id
