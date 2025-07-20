@@ -2,6 +2,8 @@
 This is a command line TODO program.
 It does one thing at a time, by design. 
 
+## Major change is in progress
+
 ## Config
 There is a config file using YAML format. It is created with prepare command.
 Prepare command by default creates the config in $XDG_CONFIG_HOME or $HOME/.config/todo if the former is not set.
@@ -36,11 +38,11 @@ Main program looks for the config file in the current dir, XDG_CONFIG_HOME and t
 		* all
 		* overdue
 
-## Use
+## Usage
 
 todo [verb] [required_value] [args] [kwargs]
 	
-Program can be executed without any additional argument (defaults to listing open tasks). Other than that a command must follow with optional switches or arguments.
+Program can be executed without any additional argument (defaults to listing open tasks). Other than that a command must follow with optional arguments.
 Providing invalid date with --due (e.g. --due -) removes due date.
 
 
@@ -83,7 +85,6 @@ Providing invalid date with --due (e.g. --due -) removes due date.
     update, u [task_id]         
         --due, -d [date]
         --group, -g [group_name]
-        --long, -l [long_description]
         --priority, -p [number]
         --short, -s [short_description] 
         --taskid, -t [task_id]
@@ -94,12 +95,12 @@ Providing invalid date with --due (e.g. --due -) removes due date.
 ```
 todo
 todo a "New task"
-todo add "New task" --due "2024-08-13" --group "Project" --priority 2
+todo add "New task" --due=2024-08-13 --group="Project" --priority=2
 todo list --all
 todo l -o
 todo count -c
-todo update 15 --desc "Changed description"
-todo u 10 --due - 
+todo update 15 --desc="Changed description"
+todo u 10 --due= 
 todo c 12
 todo reopen 3
 todo del 5
