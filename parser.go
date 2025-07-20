@@ -6,15 +6,6 @@ import (
 	"strings"
 )
 
-type Verb struct {
-	Verb          int
-	RequiredValue int
-	ValidArgs     []int
-	ValidKwargs   []int
-	MaxArgs       int
-}
-type Verbs []Verb
-
 func (verbs Verbs) GetVerb(verb int) (Verb, error) {
 	idx := slices.IndexFunc(verbs, func(v Verb) bool {
 		return v.Verb == verb

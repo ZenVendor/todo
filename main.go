@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+var db *sql.DB
+
 func main() {
 	var conf Config
 	args := os.Args[1:]
@@ -21,29 +23,22 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if parser.Verb.Verb == V_HELP {
-		PrintVersion()
-		PrintHelp()
-		return
-	}
-	if parser.Verb.Verb == V_VERSION {
-		PrintVersion()
-		return
-	}
-	if parser.Verb.Verb == V_CONFIGURE {
-		conf.Prepare(
-			parser.ArgIsPresent(A_LOCAL),
-			parser.ArgIsPresent(A_RESET),
-		)
-		return
-	}
+    // Configure first
+    if parser.Verb.Verb == V_CONFIGURE {
+        conf.Prepare(
+            parser.ArgIsPresent(A_LOCAL),
+            parser.ArgIsPresent(A_RESET),
+        )
+        return
+    }
+    conf.ReadConfig()
 
-	conf.ReadConfig()
-	db, err := conf.OpenDB()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
+    db, err := conf.OpenDB()
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer db.Close()
+
 
 	if parser.Verb.Verb == V_COUNT {
 		var c Counts
@@ -150,15 +145,10 @@ func main() {
 	}
 
 	if parser.Verb.Verb == V_LIST {
-		count, err := CountTask(db, parser.GetArg(0))
-		if err != nil {
-			log.Fatal(err)
-		}
 		tl, err := ListTasks(db)
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("%stasks: %d%s\n", C_BOLD, count, C_RESET)
 
 		w := tabwriter.NewWriter(os.Stdout, 4, 0, 2, ' ', 0)
 		fmt.Fprintf(w, "%s\tID\tGroup\tStatus\tDue\tDescription%s\n", C_BOLD, C_RESET)
@@ -167,22 +157,6 @@ func main() {
 			lColor := C_WHITE
 			tStatus := "Open"
 
-			if t.Done == 1 {
-				tStatus = "Closed"
-				lColor = C_GREEN
-			}
-			if t.Done == 0 && t.DateDue.Valid {
-				if t.DateDue.Time.Sub(time.Now()).Hours() > 120 && t.DateDue.Time.Sub(time.Now()).Hours() <= 240 {
-					lColor = C_YELLOW
-				}
-				if t.DateDue.Time.Sub(time.Now()).Hours() <= 120 {
-					lColor = C_ORANGE
-				}
-				if t.DateDue.Time.Before(time.Now()) {
-					tStatus = "Overdue"
-					lColor = C_RED
-				}
-			}
 			tDue := HumanDue(t.DateDue.Time, conf.DateFormat)
 			if !t.DateDue.Valid {
 				tDue = ""
@@ -196,16 +170,13 @@ func main() {
 		var t Task
 
 		t.Id = parser.Kwargs[K_ID].(int)
-		if err = t.Select(db); err != nil {
+		if err = t.GetById(db); err != nil {
 			log.Fatal(err)
 		}
 
 		tStatus := "Open"
-		if t.Done == 0 && t.DateDue.Valid && t.DateDue.Time.Before(time.Now()) {
+		if t.DateDue.Valid && t.DateDue.Time.Before(time.Now()) {
 			tStatus = Color("Overdue", C_RED, true)
-		}
-		if t.Done == 1 {
-			tStatus = Color("Closed", C_GREEN, false)
 		}
 
 		fmt.Printf("Task ID: %d\n", t.Id)
@@ -217,7 +188,5 @@ func main() {
 			fmt.Printf("Due: %s\n", t.DateDue.Time.Format(conf.DateFormat))
 		}
 		fmt.Printf("\n%s\n\n", Color(t.Description, C_WHITE, true))
-		meta := fmt.Sprintf("Created: %s\nUpdated: %s\n", t.SysDateCreated.Time.Format(conf.DateFormat), t.SysDateUpdated.Time.Format(conf.DateFormat))
-		fmt.Print(Color(meta, C_GREY, false))
 	}
 }

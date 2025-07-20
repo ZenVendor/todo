@@ -13,50 +13,6 @@ func NullNow() sql.NullTime {
 	return sql.NullTime{Time: time.Now(), Valid: true}
 }
 
-type Task struct {
-	Id             int
-	Summary        string
-	Priority       int
-	DateDue        sql.NullTime
-	DateCompleted  sql.NullTime
-	Description    string
-	ClosingComment string
-	Status         *Status
-	Group          *Group
-	Parent         *Task
-	DateCreated    sql.NullTime
-	DateUpdated    sql.NullTime
-	SysStatus      int
-}
-type TaskList []Task
-
-type Group struct {
-	Id     int
-	Name   string
-	Counts *Counts
-}
-type Status struct {
-	Id     int
-	Name   string
-	Counts *Counts
-}
-
-type Counts struct {
-	All        int
-	New        int
-	InProgress int
-	OnHold     int
-	Completed  int
-	Open       int
-	Overdue    int
-}
-
-type Value struct {
-	Name  string
-	Value interface{}
-}
-type Values []Value
-
 func (conf *Config) OpenDB() (db *sql.DB, err error) {
 	db, err = sql.Open("sqlite3", filepath.Join(conf.DBLocation, conf.DBName))
 	return

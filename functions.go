@@ -78,13 +78,13 @@ func (p *Parser) Complete(db *sql.DB) (msg string, err error) {
 	return msg, nil
 }
 
-func (p *Parser) Configure() (err error) {
+func (p *Parser) Configure(*sql.DB) (msg string, err error) {
 	// Optional: A_LOCAL, A_RESET
-	return err
+	return msg, err
 }
-func (p *Parser) Count() (err error) {
+func (p *Parser) Count(*sql.DB) (msg string, err error) {
 	// Optional: A_ALL, A_COMPLETED, A_DUE, A_INPROGRESS, A_ONHOLD, A_OPEN, A_OVERDUE
-	return err
+	return msg, err
 }
 func (p *Parser) Delete(db *sql.DB) (msg string, err error) {
 	// Required: K_ID
@@ -108,11 +108,7 @@ func (p *Parser) Delete(db *sql.DB) (msg string, err error) {
 	}
 	return msg, err
 }
-func (p *Parser) Group() (err error) {
-	// RequiredD: K_ID
-	return err
-}
-func (p *Parser) Help() (msg string, err error) {
+func (p *Parser) Help(db *sql.DB) (msg string, err error) {
 	return helpString, nil
 }
 func (p *Parser) Hold(db *sql.DB) (msg string, err error) {
@@ -130,9 +126,9 @@ func (p *Parser) Hold(db *sql.DB) (msg string, err error) {
 	msg = fmt.Sprintf("Task put on hold: %d - %s", t.Id, t.Summary)
 	return msg, err
 }
-func (p *Parser) List() (err error) {
+func (p *Parser) List(db *sql.DB) (msg string, err error) {
 	//	Optional: A_ALL, A_COMPLETED, A_DELETED, A_DUE, A_GROUPS, A_INPROGRESS, A_ONHOLD, A_OPEN, A_OVERDUE
-	return err
+	return msg, err
 }
 func (p *Parser) Reopen(db *sql.DB) (msg string, err error) {
 	// Required: K_ID,
@@ -225,7 +221,7 @@ func (p *Parser) Update(db *sql.DB) (msg string, err error) {
 	msg = fmt.Sprintf("Task updadted: %d - %s", t.Id, t.Summary)
 	return msg, err
 }
-func (p *Parser) Version() (msg string, err error) {
+func (p *Parser) Version(db *sql.DB) (msg string, err error) {
 	msg = fmt.Sprintf("TODO CLI\t::\tversion: %s\n", VERSION)
 	return msg, nil
 }

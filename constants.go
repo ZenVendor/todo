@@ -14,6 +14,38 @@ const (
 	C_RESET  = "\033[0m"
 )
 
+const DEFAULT_GROUP = 1
+const (
+	STATUS_NEW       = 1
+	STATUS_INPROG    = 2
+	STATUS_HOLD      = 3
+	STATUS_COMPLETED = 4
+)
+const (
+	SYS_DELETED = 0
+	SYS_ACTIVE  = 1
+)
+const (
+	PRIORITY_CRIT = 5
+	PRIORITY_HIGH = 50
+	PRIORITY_MED  = 500
+	PRIORITY_LOW  = 5000
+)
+
+var priorityMap = map[string]int{
+	"low":      PRIORITY_LOW,
+	"l":        PRIORITY_LOW,
+	"medium":   PRIORITY_MED,
+	"mid":      PRIORITY_MED,
+	"m":        PRIORITY_MED,
+	"high":     PRIORITY_HIGH,
+	"hi":       PRIORITY_HIGH,
+	"h":        PRIORITY_HIGH,
+	"critical": PRIORITY_CRIT,
+	"crit":     PRIORITY_CRIT,
+	"c":        PRIORITY_CRIT,
+}
+
 // CLI arguments
 const (
 	X_NIL = iota
@@ -63,8 +95,6 @@ var verbMap = map[string]int{
 	"configure": V_CONFIGURE,
 	"count":     V_COUNT,
 	"delete":    V_DELETE,
-	"group":     V_GROUP,
-	"g":         V_GROUP,
 	"help":      V_HELP,
 	"h":         V_HELP,
 	"hold":      V_HOLD,
@@ -89,7 +119,7 @@ var argMap = map[string]int{
 	"--due":        A_DUE,
 	"-d":           A_DUE,
 	"--inprogress": A_INPROGRESS,
-	"-ip":          A_INPROGRESS,
+	"-p":          A_INPROGRESS,
 	"--local":      A_LOCAL,
 	"--new":        A_NEW,
 	"-n":           A_NEW,
@@ -117,39 +147,6 @@ var kwargMap = map[string]int{
 	"-s":            K_SUMMARY,
 }
 
-const (
-	PRIORITY_CRIT = 5
-	PRIORITY_HIGH = 50
-	PRIORITY_MED  = 500
-	PRIORITY_LOW  = 5000
-)
-
-var priorityMap = map[string]int{
-	"low":      PRIORITY_LOW,
-	"l":        PRIORITY_LOW,
-	"medium":   PRIORITY_MED,
-	"mid":      PRIORITY_MED,
-	"m":        PRIORITY_MED,
-	"high":     PRIORITY_HIGH,
-	"hi":       PRIORITY_HIGH,
-	"h":        PRIORITY_HIGH,
-	"critical": PRIORITY_CRIT,
-	"crit":     PRIORITY_CRIT,
-	"c":        PRIORITY_CRIT,
-}
-
-const DEFAULT_GROUP = 1
-const (
-	STATUS_NEW       = 1
-	STATUS_INPROG    = 2
-	STATUS_HOLD      = 3
-	STATUS_COMPLETED = 4
-)
-const (
-	SYS_DELETED = 0
-	SYS_ACTIVE  = 1
-)
-
 var validatorMap = map[int]func(string) (interface{}, error){
 	K_COMMENT:     validateString,
 	K_DUEDATE:     validateDate,
@@ -159,98 +156,4 @@ var validatorMap = map[int]func(string) (interface{}, error){
 	K_PRIORITY:    validatePriority,
 	K_SUMMARY:     validateSummary,
 	K_PARENT:      validateInt,
-}
-
-var verbs = Verbs{
-	Verb{
-		V_ADD,
-		K_SUMMARY,
-		[]int{},
-		[]int{K_DUEDATE, K_GROUP, K_DESCRIPTION, K_PRIORITY, K_PARENT},
-		1,
-	},
-	Verb{
-		V_COMPLETE,
-		K_ID,
-		[]int{},
-		[]int{K_COMMENT},
-		0,
-	},
-	Verb{
-		V_CONFIGURE,
-		X_NIL,
-		[]int{A_LOCAL, A_RESET},
-		[]int{},
-		2,
-	},
-	Verb{
-		V_COUNT,
-		X_NIL,
-		[]int{A_ALL, A_COMPLETED, A_DUE, A_INPROGRESS, A_ONHOLD, A_OPEN, A_OVERDUE},
-		[]int{},
-		1,
-	},
-	Verb{
-		V_DELETE,
-		K_ID,
-		[]int{A_ALL},
-		[]int{},
-		0,
-	},
-	Verb{
-		V_GROUP,
-		K_ID,
-		[]int{},
-		[]int{},
-		1,
-	},
-	Verb{
-		V_HELP,
-		X_NIL,
-		[]int{},
-		[]int{},
-		0,
-	},
-	Verb{
-		V_HOLD,
-		K_ID,
-		[]int{},
-		[]int{},
-		0,
-	},
-	Verb{
-		V_LIST,
-		X_NIL,
-		[]int{A_ALL, A_COMPLETED, A_DELETED, A_DUE, A_GROUPS, A_INPROGRESS, A_ONHOLD, A_OPEN, A_OVERDUE},
-		[]int{},
-		1,
-	},
-	Verb{
-		V_REOPEN,
-		K_ID,
-		[]int{},
-		[]int{},
-		0,
-	},
-	Verb{
-		V_SHOW,
-		K_ID,
-		[]int{},
-		[]int{},
-		0,
-	},
-	Verb{
-		V_UPDATE,
-		K_ID,
-		[]int{},
-		[]int{K_DUEDATE, K_GROUP, K_DESCRIPTION, K_PRIORITY, K_SUMMARY, K_PARENT},
-		1,
-	},
-	Verb{
-		V_VERSION,
-		X_NIL,
-		[]int{},
-		[]int{},
-		0,
-	},
 }
