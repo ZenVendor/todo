@@ -145,6 +145,10 @@ const (
 	STATUS_HOLD      = 3
 	STATUS_COMPLETED = 4
 )
+const (
+	SYS_DELETED = 0
+	SYS_ACTIVE  = 1
+)
 
 var validatorMap = map[int]func(string) (interface{}, error){
 	K_COMMENT:     validateString,

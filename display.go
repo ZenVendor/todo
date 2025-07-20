@@ -1,20 +1,9 @@
 package main
 
 import (
-	_ "embed"
 	"fmt"
 	"time"
 )
-
-//go:embed help.txt
-var helpString string
-
-func PrintVersion() {
-	fmt.Printf("TODO CLI\tversion: %s\n", VERSION)
-}
-func PrintHelp() {
-	fmt.Println(helpString)
-}
 
 func Color(text, color string, bold bool) string {
 	if bold {
