@@ -17,13 +17,13 @@ const (
 // CLI arguments
 const (
 	X_NIL = iota
-    // Verbs
-	V_ADD 
+	// Verbs
+	V_ADD
 	V_COMPLETE
 	V_CONFIGURE
 	V_COUNT
 	V_DELETE
-    V_GROUP
+	V_GROUP
 	V_HELP
 	V_HOLD
 	V_LIST
@@ -31,7 +31,7 @@ const (
 	V_SHOW
 	V_UPDATE
 	V_VERSION
-    // Key-value args
+	// Key-value args
 	K_COMMENT
 	K_DUEDATE
 	K_GROUP
@@ -40,10 +40,10 @@ const (
 	K_PRIORITY
 	K_SUMMARY
 	K_PARENT
-    // Switches
+	// Switches
 	A_ALL
 	A_COMPLETED
-    A_DELETED
+	A_DELETED
 	A_DUE
 	A_GROUPS
 	A_INPROGRESS
@@ -63,8 +63,8 @@ var verbMap = map[string]int{
 	"configure": V_CONFIGURE,
 	"count":     V_COUNT,
 	"delete":    V_DELETE,
-    "group":    V_GROUP,
-    "g":    V_GROUP,
+	"group":     V_GROUP,
+	"g":         V_GROUP,
 	"help":      V_HELP,
 	"h":         V_HELP,
 	"hold":      V_HOLD,
@@ -83,9 +83,9 @@ var verbMap = map[string]int{
 var argMap = map[string]int{
 	"--all":        A_ALL,
 	"-a":           A_ALL,
-	"--completed":     A_COMPLETED,
+	"--completed":  A_COMPLETED,
 	"-c":           A_COMPLETED,
-	"-deleted":           A_DELETED,
+	"-deleted":     A_DELETED,
 	"--due":        A_DUE,
 	"-d":           A_DUE,
 	"--inprogress": A_INPROGRESS,
@@ -93,12 +93,12 @@ var argMap = map[string]int{
 	"--local":      A_LOCAL,
 	"--new":        A_NEW,
 	"-n":           A_NEW,
-	"--open":    A_OPEN,
+	"--open":       A_OPEN,
 	"-o":           A_OPEN,
 	"--onhold":     A_ONHOLD,
 	"-h":           A_ONHOLD,
 	"--overdue":    A_OVERDUE,
-	"-od":           A_OVERDUE,
+	"-od":          A_OVERDUE,
 	"--reset":      A_RESET,
 }
 var kwargMap = map[string]int{
@@ -117,107 +117,136 @@ var kwargMap = map[string]int{
 	"-s":            K_SUMMARY,
 }
 
-var validatorMap = map[int]func(string) (interface{}, error) {
-		K_COMMENT:     validateString,
-		K_DUEDATE:     validateDate,
-		K_GROUP:       validateGroup,
-		K_ID:          validateInt,
-		K_DESCRIPTION: validateString,
-		K_PRIORITY:    validatePriority,
-		K_SUMMARY:     validateSummary,
-		K_PARENT:      validateInt,
+const (
+	PRIORITY_CRIT = 5
+	PRIORITY_HIGH = 50
+	PRIORITY_MED  = 500
+	PRIORITY_LOW  = 5000
+)
+
+var priorityMap = map[string]int{
+	"low":      PRIORITY_LOW,
+	"l":        PRIORITY_LOW,
+	"medium":   PRIORITY_MED,
+	"mid":      PRIORITY_MED,
+	"m":        PRIORITY_MED,
+	"high":     PRIORITY_HIGH,
+	"hi":       PRIORITY_HIGH,
+	"h":        PRIORITY_HIGH,
+	"critical": PRIORITY_CRIT,
+	"crit":     PRIORITY_CRIT,
+	"c":        PRIORITY_CRIT,
+}
+
+const DEFAULT_GROUP = 1
+const (
+	STATUS_NEW       = 1
+	STATUS_INPROG    = 2
+	STATUS_HOLD      = 3
+	STATUS_COMPLETED = 4
+)
+
+var validatorMap = map[int]func(string) (interface{}, error){
+	K_COMMENT:     validateString,
+	K_DUEDATE:     validateDate,
+	K_GROUP:       validateGroup,
+	K_ID:          validateInt,
+	K_DESCRIPTION: validateString,
+	K_PRIORITY:    validatePriority,
+	K_SUMMARY:     validateSummary,
+	K_PARENT:      validateInt,
 }
 
 var verbs = Verbs{
 	Verb{
-        V_ADD, 
-        K_SUMMARY, 
-        []int{},
-        []int{K_DUEDATE, K_GROUP, K_DESCRIPTION, K_PRIORITY, K_PARENT},
-        1,
-    },
+		V_ADD,
+		K_SUMMARY,
+		[]int{},
+		[]int{K_DUEDATE, K_GROUP, K_DESCRIPTION, K_PRIORITY, K_PARENT},
+		1,
+	},
 	Verb{
-        V_COMPLETE, 
-        K_ID, 
-        []int{},
-        []int{K_COMMENT}, 
-        0,
-    },
+		V_COMPLETE,
+		K_ID,
+		[]int{},
+		[]int{K_COMMENT},
+		0,
+	},
 	Verb{
-        V_CONFIGURE, 
-        X_NIL, 
-        []int{A_LOCAL, A_RESET}, 
-        []int{},
-        2,
-    },
+		V_CONFIGURE,
+		X_NIL,
+		[]int{A_LOCAL, A_RESET},
+		[]int{},
+		2,
+	},
 	Verb{
-        V_COUNT, 
-        X_NIL, 
-        []int{A_ALL, A_COMPLETED, A_DUE, A_INPROGRESS, A_ONHOLD, A_OPEN, A_OVERDUE}, 
-        []int{},
-        1,
-    },
+		V_COUNT,
+		X_NIL,
+		[]int{A_ALL, A_COMPLETED, A_DUE, A_INPROGRESS, A_ONHOLD, A_OPEN, A_OVERDUE},
+		[]int{},
+		1,
+	},
 	Verb{
-        V_DELETE, 
-        K_ID, 
-        []int{},
-        []int{}, 
-        0,
-    },
+		V_DELETE,
+		K_ID,
+		[]int{A_ALL},
+		[]int{},
+		0,
+	},
 	Verb{
-        V_GROUP, 
-        K_ID, 
-        []int{},
-        []int{}, 
-        1,
-    },
+		V_GROUP,
+		K_ID,
+		[]int{},
+		[]int{},
+		1,
+	},
 	Verb{
-        V_HELP, 
-        X_NIL, 
-        []int{}, 
-        []int{},
-        0,
-    },
+		V_HELP,
+		X_NIL,
+		[]int{},
+		[]int{},
+		0,
+	},
 	Verb{
-        V_HOLD, 
-        K_ID, 
-        []int{}, 
-        []int{},
-        0,
-    },
+		V_HOLD,
+		K_ID,
+		[]int{},
+		[]int{},
+		0,
+	},
 	Verb{
-        V_LIST, 
-        X_NIL, 
-        []int{A_ALL, A_COMPLETED, A_DELETED, A_DUE, A_GROUPS, A_INPROGRESS, A_ONHOLD, A_OPEN, A_OVERDUE}, 
-        []int{},
-        1,
-    },
+		V_LIST,
+		X_NIL,
+		[]int{A_ALL, A_COMPLETED, A_DELETED, A_DUE, A_GROUPS, A_INPROGRESS, A_ONHOLD, A_OPEN, A_OVERDUE},
+		[]int{},
+		1,
+	},
 	Verb{
-        V_REOPEN, 
-        K_ID, 
-        []int{}, 
-        []int{}, 
-        0,
-    },
+		V_REOPEN,
+		K_ID,
+		[]int{},
+		[]int{},
+		0,
+	},
 	Verb{
-        V_SHOW, 
-        K_ID, 
-        []int{}, 
-        []int{}, 
-        0,
-    },
+		V_SHOW,
+		K_ID,
+		[]int{},
+		[]int{},
+		0,
+	},
 	Verb{
-        V_UPDATE, 
-        K_ID, 
-        []int{}, 
-        []int{K_DUEDATE, K_GROUP, K_DESCRIPTION, K_PRIORITY, K_SUMMARY, K_PARENT}, 
-        1,
-    },
+		V_UPDATE,
+		K_ID,
+		[]int{},
+		[]int{K_DUEDATE, K_GROUP, K_DESCRIPTION, K_PRIORITY, K_SUMMARY, K_PARENT},
+		1,
+	},
 	Verb{
-        V_VERSION, 
-        X_NIL, 
-        []int{}, 
-        []int{}, 
-        0,
-    },
+		V_VERSION,
+		X_NIL,
+		[]int{},
+		[]int{},
+		0,
+	},
 }

@@ -46,27 +46,27 @@ func main() {
 	defer db.Close()
 
 	if parser.Verb.Verb == V_COUNT {
-        var c Counts
-        if err = c.GetCounts(db); err != nil {
+		var c Counts
+		if err = c.GetCounts(db); err != nil {
 			log.Fatal(err)
 		}
-        var count int
-        switch parser.GetArg(0) {
-            case A_ALL:
-                count = c.All
-            case A_NEW:
-                count = c.New
-            case A_INPROGRESS:
-                count = c.InProgress
-            case A_ONHOLD:
-                count = c.OnHold
-            case A_COMPLETED:
-                count = c.Completed
-            case A_OPEN:
-                count = c.Open
-            case A_OVERDUE:
-                count = c.Overdue
-        }
+		var count int
+		switch parser.GetArg(0) {
+		case A_ALL:
+			count = c.All
+		case A_NEW:
+			count = c.New
+		case A_INPROGRESS:
+			count = c.InProgress
+		case A_ONHOLD:
+			count = c.OnHold
+		case A_COMPLETED:
+			count = c.Completed
+		case A_OPEN:
+			count = c.Open
+		case A_OVERDUE:
+			count = c.Overdue
+		}
 		fmt.Printf("%d", count)
 		return
 	}

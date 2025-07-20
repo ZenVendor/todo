@@ -10,8 +10,8 @@ type Verb struct {
 	Verb          int
 	RequiredValue int
 	ValidArgs     []int
-    ValidKwargs []int
-	MaxArgs     int
+	ValidKwargs   []int
+	MaxArgs       int
 }
 type Verbs []Verb
 

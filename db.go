@@ -47,7 +47,7 @@ type Counts struct {
 	InProgress int
 	OnHold     int
 	Completed  int
-	Open        int
+	Open       int
 	Overdue    int
 }
 
@@ -244,6 +244,23 @@ func (t Task) Delete(db *sql.DB) (err error) {
 		t.Id,
 	)
 	return err
+}
+func (t Task) DeleteChildren(db *sql.DB) (rows int, err error) {
+	result, err := db.Exec(`
+		UPDATE Tasks 
+        SET sys_status = 0, sys_updated = current_timestamp 
+        WHERE parent_id = ?
+        `,
+		t.Id,
+	)
+	if err != nil {
+		return 0, err
+	}
+	r, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	return int(r), err
 }
 
 func (g Group) Delete(db *sql.DB) (err error) {
