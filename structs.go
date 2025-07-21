@@ -50,6 +50,12 @@ type Verb struct {
 }
 type Verbs []Verb
 
+type Parser struct {
+	Verb   Verb
+	Args   []int
+	Kwargs map[int]interface{}
+}
+
 var verbs = Verbs{
 	Verb{
 		V_ADD,
@@ -66,14 +72,6 @@ var verbs = Verbs{
 		[]int{K_COMMENT},
 		0,
         (*Parser).Complete,
-	},
-	Verb{
-		V_CONFIGURE,
-		X_NIL,
-		[]int{A_LOCAL, A_RESET},
-		[]int{},
-		2,
-        (*Parser).Configure,
 	},
 	Verb{
 		V_COUNT,

@@ -10,12 +10,11 @@ import (
 	"time"
 )
 
-var db *sql.DB
-
 func main() {
 	var conf Config
 	args := os.Args[1:]
-	parser, err := NewParser(V_LIST, []int{A_OPEN}, map[int]interface{}{})
+
+    parser, err := NewParser(V_LIST, []int{A_OPEN}, map[int]interface{}{})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -23,23 +22,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-    // Configure first
-    if parser.Verb.Verb == V_CONFIGURE {
-        conf.Prepare(
-            parser.ArgIsPresent(A_LOCAL),
-            parser.ArgIsPresent(A_RESET),
-        )
-        return
-    }
-    conf.ReadConfig()
-
-    db, err := conf.OpenDB()
+    db, err := conf.Prepare()
+    defer db.Close()
+    
+    msg, err := parser.Verb.Call(&parser, db)
     if err != nil {
         log.Fatal(err)
     }
-    defer db.Close()
+    fmt.Print(msg)
 
-
+    // ===== Left for reference
 	if parser.Verb.Verb == V_COUNT {
 		var c Counts
 		if err = c.GetCounts(db); err != nil {

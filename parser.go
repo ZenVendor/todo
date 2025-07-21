@@ -17,12 +17,6 @@ func (verbs Verbs) GetVerb(verb int) (Verb, error) {
 
 }
 
-type Parser struct {
-	Verb   Verb
-	Args   []int
-	Kwargs map[int]interface{}
-}
-
 func (p *Parser) Print() {
 	fmt.Printf("Verb: %d\n", p.Verb.Verb)
 	fmt.Printf("Args:")

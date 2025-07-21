@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"log"
 	"path/filepath"
 	"time"
 
@@ -18,49 +17,22 @@ func (conf *Config) OpenDB() (db *sql.DB, err error) {
 	return
 }
 
-func TableExists(db *sql.DB) bool {
-	var rows int
-	if err := db.QueryRow("select count(*) from sqlite_schema where type = 'table' and tbl_name in ('Task', 'Group', 'Status');").Scan(&rows); err != nil {
-		log.Fatal(err)
-	}
-	if rows != 3 {
-		return false
-	}
-	return true
-}
+func CheckDB(db *sql.DB) (err error) {
+    query := "select cs_db, cs_trigger, cs_view from SysVersion;"
 
-func CreateTable(db *sql.DB) error {
-	query := `
-        create table Tasks (
-            id integer primary key not null,
-            short text not null,
-            priority integer null,
-            group_id integer not null,
-            done integer not null,
-            long text,
-            comment text,
-            due datetime,
-            completed datetime,
-            task_id integer,
-            created datetime not null,
-            updated datetime not null
-        );
-        create table taskgroup (
-            id integer primary key not null,
-            name text not null,
-            created datetime not null,
-            updated datetime not null
-        );
-        insert into taskgroup (name, created, updated) values ('Default', ?, ?);
-    `
-	log.Println("Creating tables.")
-	_, err := db.Exec(query, time.Now(), time.Now())
-	return err
+    var csDB, csTrig, csView string
+    if err := db.QueryRow(query).Scan(&csDB, &csTrig, &csView); err != nil {
+        return ErrDBVersion
+    }
+    if csDB != DB_VERSION || csTrig != TRIG_VERSION || csView != VIEW_VERSION {
+        return ErrDBVersion
+    }
+    return err
 }
 
 func (t *Task) Add(db *sql.DB) (err error) {
 	result, err := db.Exec(`
-        INSERT INTO Tasks (
+        INSERT INTO Task (
             summary
             , priority
             , date_due
@@ -86,7 +58,7 @@ func (t *Task) Add(db *sql.DB) (err error) {
 
 func (g *Group) Add(db *sql.DB) (err error) {
 	result, err := db.Exec(
-		"INSERT INTO Groups (group_name) VALUES (?);",
+		"INSERT INTO TaskGroup (group_name) VALUES (?);",
 		g.Name,
 	)
 	if err != nil {
@@ -140,7 +112,7 @@ func (t *Task) GetById(db *sql.DB) (err error) {
 
 func (g *Group) GetById(db *sql.DB) (err error) {
 	err = db.QueryRow(
-		"SELECT id, group_name FROM Groups WHERE id = ?;",
+		"SELECT id, group_name FROM TaskGroup WHERE id = ?;",
 		g.Id,
 	).Scan(&g.Id, &g.Name)
 	return err
@@ -148,7 +120,7 @@ func (g *Group) GetById(db *sql.DB) (err error) {
 
 func (g *Group) GetByName(db *sql.DB) (err error) {
 	err = db.QueryRow(
-		"SELECT id, group_name FROM Groups WHERE group_name = ?;",
+		"SELECT id, group_name FROM TaskGroup WHERE group_name = ?;",
 		g.Name,
 	).Scan(&g.Id, &g.Name)
 	return err
@@ -156,7 +128,7 @@ func (g *Group) GetByName(db *sql.DB) (err error) {
 
 func (t Task) Update(db *sql.DB) (err error) {
 	query := `
-        UPDATE Tasks SET 
+        UPDATE Task SET 
             summary = ?
             , priority = ?
             , date_due = ?
@@ -187,7 +159,7 @@ func (t Task) Update(db *sql.DB) (err error) {
 
 func (g Group) Update(db *sql.DB) (err error) {
 	_, err = db.Exec(
-		"UPDATE Groups SET group_name = ?, sys_updated = current_timestamp WHERE id = ?;",
+		"UPDATE TaskGroup SET group_name = ?, sys_updated = current_timestamp WHERE id = ?;",
 		g.Name,
 		g.Id,
 	)
@@ -196,14 +168,14 @@ func (g Group) Update(db *sql.DB) (err error) {
 
 func (t Task) Delete(db *sql.DB) (err error) {
 	_, err = db.Exec(
-		"UPDATE Tasks SET sys_status = 0, sys_updated = current_timestamp WHERE id = ?;",
+		"UPDATE Task SET sys_status = 0, sys_updated = current_timestamp WHERE id = ?;",
 		t.Id,
 	)
 	return err
 }
 func (t Task) DeleteChildren(db *sql.DB) (rows int, err error) {
 	result, err := db.Exec(`
-		UPDATE Tasks 
+		UPDATE Task 
         SET sys_status = 0, sys_updated = current_timestamp 
         WHERE parent_id = ?
         `,
@@ -221,7 +193,7 @@ func (t Task) DeleteChildren(db *sql.DB) (rows int, err error) {
 
 func (g Group) Delete(db *sql.DB) (err error) {
 	_, err = db.Exec(
-		"UPDATE Groups SET sys_status = 0, sys_updated = current_timestamp WHERE id = ?;",
+		"UPDATE TaskGroup SET sys_status = 0, sys_updated = current_timestamp WHERE id = ?;",
 		g.Id,
 	)
 	return err

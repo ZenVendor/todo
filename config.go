@@ -1,21 +1,24 @@
 package main
 
 import (
-	"fmt"
-	"log"
+    "database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 
 	"gopkg.in/yaml.v2"
 )
 
-const CONFIG_FN = "todo_config.yml"
-
 type Config struct {
 	DBLocation   string `yaml:"dblocation"`
 	DBName       string `yaml:"dbname"`
 	DateFormat   string `yaml:"dateformat"`
-	UseNerdFonts bool   `yaml:"usenerdfonts"`
+    GroupName    string `yaml:"defaultgroup"`
+}
+
+func Exists(path string) bool {
+    _, err := os.Stat(path)
+    return !errors.Is(err, os.ErrNotExist)
 }
 
 func OpenLogFile(path string) (*os.File, error) {
@@ -26,79 +29,7 @@ func OpenLogFile(path string) (*os.File, error) {
 	return logFile, nil
 }
 
-func (conf *Config) Prepare(local, reset bool) {
-	if local {
-		log.Printf("LOCAL: Using current dir.\n")
-	}
-	configDir := filepath.Dir("")
-
-	if !local {
-		if dir, ok := os.LookupEnv("XDG_CONFIG_HOME"); ok {
-			configDir = filepath.Join(dir, "todo")
-		}
-		if dir, ok := os.LookupEnv("HOME"); ok {
-			configDir = filepath.Join(dir, ".config", "todo")
-		}
-	}
-	log.Printf("Config dir: %s\n", configDir)
-
-	// default config
-	conf.DBLocation = configDir
-	conf.DBName = "todo.db"
-	conf.DateFormat = "2006-01-02"
-	conf.UseNerdFonts = false
-
-	configFile := filepath.Join(configDir, CONFIG_FN)
-
-	if _, err := os.Stat(configDir); os.IsNotExist(err) {
-		log.Printf("Config dir does not exist. Creating directory.\n")
-		if err = os.MkdirAll(configDir, 0700); err != nil {
-			log.Fatal(err)
-		}
-	} else {
-		log.Println("Config dir exists.")
-	}
-	if reset {
-		log.Printf("RESET: Removing config and db files\n")
-		if err := os.Remove(configFile); err != nil {
-			log.Println(err)
-		}
-		if err := os.Remove(filepath.Join(conf.DBLocation, conf.DBName)); err != nil {
-			log.Println(err)
-		}
-	}
-
-	if _, err := os.Stat(configFile); os.IsNotExist(err) {
-		log.Printf("Config file does not exist. Creating default file.\n")
-		writeConf := fmt.Sprintf("dblocation: %s\ndbname: %s\ndateformat: %s", conf.DBLocation, conf.DBName, conf.DateFormat)
-		if err := os.WriteFile(configFile, []byte(writeConf), 0700); err != nil {
-			log.Fatal(err)
-		}
-	} else {
-		log.Println("Config file exists.")
-	}
-
-	if _, err := os.Stat(filepath.Join(conf.DBLocation, conf.DBName)); !os.IsNotExist(err) {
-		log.Println("Database file exists.")
-	}
-	log.Printf("Opening/Creating database file.")
-	db, err := conf.OpenDB()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
-	log.Printf("Checking tables.\n")
-	if !TableExists(db) {
-		err = CreateTable(db)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-	fmt.Printf("Config file and database are ready.\nConfig dir: %s\n", configDir)
-}
-
-func (conf *Config) ReadConfig() {
+func (conf *Config) Prepare() (db *sql.DB, err error) {
 	configDirs := []string{filepath.Dir("")}
 
 	if dir, ok := os.LookupEnv("XDG_CONFIG_HOME"); ok {
@@ -109,16 +40,15 @@ func (conf *Config) ReadConfig() {
 	}
 
 	for _, cd := range configDirs {
-		configFile := filepath.Join(cd, CONFIG_FN)
-		if _, err := os.Stat(configFile); err == nil {
-			//log.Printf("Found config file in %s, reading config.\n", cd)
+		configFile := filepath.Join(cd, CONFIG_FILE)
+		if Exists(configFile) {
 			f, err := os.ReadFile(configFile)
 			if err != nil {
-				log.Fatal(err)
+                return nil, err
 			}
 			err = yaml.Unmarshal(f, &conf)
 			if err != nil {
-				log.Fatal(err)
+                return nil, err
 			}
 			if conf.DBLocation == "" {
 				conf.DBLocation = filepath.Dir("")
@@ -126,14 +56,13 @@ func (conf *Config) ReadConfig() {
 
 			db, err := conf.OpenDB()
 			if err != nil {
-				log.Fatal(err)
+                return nil, err
 			}
-			defer db.Close()
-
-			if !TableExists(db) {
-				fmt.Printf("Tables do not exist. Run \"todo prepare\".\n")
-			}
-			break
+            if err = CheckDB(db); err != nil {
+                return nil, err
+            }
+            return db, err
 		}
 	}
+    return nil, ErrNoConfig
 }
