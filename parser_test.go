@@ -23,7 +23,6 @@ var testCases = []struct {
 	{[]string{"show", "--id=12"}, Parser{verbs[8], []int{}, map[int]interface{}{}}, ErrVerbRequiresValue},
 	{[]string{"s", "12"}, Parser{verbs[8], []int{}, map[int]interface{}{K_ID: 12}}, nil},
 	{[]string{"configure"}, Parser{verbs[2], []int{}, map[int]interface{}{}}, nil},
-	{[]string{"configure", "--local", "--reset"}, Parser{verbs[2], []int{A_LOCAL, A_RESET}, map[int]interface{}{}}, nil},
 	{[]string{"configure", "--due"}, Parser{verbs[2], []int{}, map[int]interface{}{}}, ErrInvalidArgument},
 	{[]string{"reopen"}, Parser{verbs[7], []int{}, map[int]interface{}{}}, ErrVerbRequiresValue},
 	{[]string{"r", "12"}, Parser{verbs[7], []int{}, map[int]interface{}{K_ID: 12}}, nil},

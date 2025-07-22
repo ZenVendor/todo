@@ -1,18 +1,18 @@
 package main
 
 const (
-    VERSION = "2.0.0"
-    DB_VERSION = "4cacca9b6b43069a4bfc1d62f0b85ad1"
-    TRIG_VERSION = "8cbc71848af1abb4178959434d088308"
-    VIEW_VERSION = "6c8c6c88513a69f09382ea882665f204"
+	VERSION      = "2.0.0"
+	DB_VERSION   = "fc4247a1b0cbfbfcff856355ba6ca58e"
+	TRIG_VERSION = "84bd34b5905b45c7f0bde28a28c64143"
+	VIEW_VERSION = "6c8c6c88513a69f09382ea882665f204"
 )
 
 // Config defaults
 const (
-    CONFIG_FILE = "todo_config.yml"
-    CONFIG_DBNAME = "todo.db"
-    CONFIG_DATE_FORMAT = "2006-01-02"
-    CONFIG_GROUP_NAME = "General"
+	CONFIG_FILE        = "todo_config.yml"
+	CONFIG_DBNAME      = "todo.db"
+	CONFIG_DATE_FORMAT = "2006-01-02"
+	CONFIG_GROUP_NAME  = "General"
 )
 
 // Default values

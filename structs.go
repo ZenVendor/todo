@@ -13,11 +13,12 @@ type Task struct {
 	Status         *Status
 	Group          *Group
 	Parent         *Task
+	Children       TaskList
 	DateCreated    sql.NullTime
 	DateUpdated    sql.NullTime
 	SysStatus      int
 }
-type TaskList []Task
+type TaskList []*Task
 
 type Group struct {
 	Id     int
@@ -46,7 +47,7 @@ type Verb struct {
 	ValidArgs     []int
 	ValidKwargs   []int
 	MaxArgs       int
-    Call        func(*Parser, *sql.DB) (string, error)
+	Call          func(*Parser, *sql.DB) (string, error)
 }
 type Verbs []Verb
 
@@ -63,7 +64,7 @@ var verbs = Verbs{
 		[]int{},
 		[]int{K_DUEDATE, K_GROUP, K_DESCRIPTION, K_PRIORITY, K_PARENT},
 		1,
-        (*Parser).Add,
+		(*Parser).Add,
 	},
 	Verb{
 		V_COMPLETE,
@@ -71,7 +72,7 @@ var verbs = Verbs{
 		[]int{},
 		[]int{K_COMMENT},
 		0,
-        (*Parser).Complete,
+		(*Parser).Complete,
 	},
 	Verb{
 		V_COUNT,
@@ -79,15 +80,15 @@ var verbs = Verbs{
 		[]int{A_ALL, A_COMPLETED, A_DUE, A_INPROGRESS, A_ONHOLD, A_OPEN, A_OVERDUE},
 		[]int{},
 		1,
-        (*Parser).Count,
+		(*Parser).Count,
 	},
 	Verb{
 		V_DELETE,
 		K_ID,
 		[]int{A_ALL},
 		[]int{},
-		0,
-        (*Parser).Delete,
+		1,
+		(*Parser).Delete,
 	},
 	Verb{
 		V_HELP,
@@ -95,7 +96,7 @@ var verbs = Verbs{
 		[]int{},
 		[]int{},
 		0,
-        (*Parser).Help,
+		(*Parser).Help,
 	},
 	Verb{
 		V_HOLD,
@@ -103,7 +104,7 @@ var verbs = Verbs{
 		[]int{},
 		[]int{},
 		0,
-        (*Parser).Hold,
+		(*Parser).Hold,
 	},
 	Verb{
 		V_LIST,
@@ -111,7 +112,7 @@ var verbs = Verbs{
 		[]int{A_ALL, A_COMPLETED, A_DELETED, A_DUE, A_GROUPS, A_INPROGRESS, A_ONHOLD, A_OPEN, A_OVERDUE},
 		[]int{},
 		1,
-        (*Parser).List,
+		(*Parser).List,
 	},
 	Verb{
 		V_REOPEN,
@@ -119,7 +120,7 @@ var verbs = Verbs{
 		[]int{},
 		[]int{},
 		0,
-        (*Parser).Reopen,
+		(*Parser).Reopen,
 	},
 	Verb{
 		V_SHOW,
@@ -127,7 +128,7 @@ var verbs = Verbs{
 		[]int{},
 		[]int{},
 		0,
-        (*Parser).Show,
+		(*Parser).Show,
 	},
 	Verb{
 		V_UPDATE,
@@ -135,7 +136,7 @@ var verbs = Verbs{
 		[]int{},
 		[]int{K_DUEDATE, K_GROUP, K_DESCRIPTION, K_PRIORITY, K_SUMMARY, K_PARENT},
 		1,
-        (*Parser).Update,
+		(*Parser).Update,
 	},
 	Verb{
 		V_VERSION,
@@ -143,6 +144,6 @@ var verbs = Verbs{
 		[]int{},
 		[]int{},
 		0,
-        (*Parser).Version,
+		(*Parser).Version,
 	},
 }

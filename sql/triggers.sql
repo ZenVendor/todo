@@ -218,3 +218,40 @@ create trigger if not exists TRG_Audit_Hard_Delete_Status
         insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
         values (current_timestamp, 'destroy', 'Status', old.id, 'status_name', old.status_name);
     end;
+
+
+-- checksums    
+create trigger if not exists TRG_Audit_Create_SysVersion
+    after insert on SysVersion
+    begin
+        insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
+        values (current_timestamp, 'create', 'SysVersion', new.id, 'cs_db', new.cs_db);
+        insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
+        values (current_timestamp, 'create', 'SysVersion', new.id, 'cs_trigger', new.cs_trigger);
+        insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
+        values (current_timestamp, 'create', 'SysVersion', new.id, 'cs_view', new.cs_view);
+    end;
+
+create trigger if not exists TRG_Audit_Update_SysVersion_db
+    after update on SysVersion
+    when new.cs_db <> old.cs_db
+    begin
+        insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
+        values (current_timestamp, 'update', 'SysVersion', new.id, 'cs_db', new.cs_db);
+    end;
+
+create trigger if not exists TRG_Audit_Update_SysVersion_trigger
+    after update on SysVersion
+    when new.cs_trigger <> old.cs_trigger
+    begin
+        insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
+        values (current_timestamp, 'updadte', 'SysVersion', new.id, 'cs_trigger', new.cs_trigger);
+    end;
+
+create trigger if not exists TRG_Audit_Update_SysVersion_view
+    after update on SysVersion
+    when new.cs_view <> old.cs_view
+    begin
+        insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
+        values (current_timestamp, 'update', 'SysVersion', new.id, 'cs_view', new.cs_view);
+    end;

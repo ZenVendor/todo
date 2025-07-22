@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"path/filepath"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -12,22 +11,17 @@ func NullNow() sql.NullTime {
 	return sql.NullTime{Time: time.Now(), Valid: true}
 }
 
-func (conf *Config) OpenDB() (db *sql.DB, err error) {
-	db, err = sql.Open("sqlite3", filepath.Join(conf.DBLocation, conf.DBName))
-	return
-}
-
 func CheckDB(db *sql.DB) (err error) {
-    query := "select cs_db, cs_trigger, cs_view from SysVersion;"
+	query := "select cs_db, cs_trigger, cs_view from SysVersion;"
 
-    var csDB, csTrig, csView string
-    if err := db.QueryRow(query).Scan(&csDB, &csTrig, &csView); err != nil {
-        return ErrDBVersion
-    }
-    if csDB != DB_VERSION || csTrig != TRIG_VERSION || csView != VIEW_VERSION {
-        return ErrDBVersion
-    }
-    return err
+	var csDB, csTrig, csView string
+	if err := db.QueryRow(query).Scan(&csDB, &csTrig, &csView); err != nil {
+		return ErrDBVersion
+	}
+	if csDB != DB_VERSION || csTrig != TRIG_VERSION || csView != VIEW_VERSION {
+		return ErrDBVersion
+	}
+	return err
 }
 
 func (t *Task) Add(db *sql.DB) (err error) {
@@ -70,6 +64,15 @@ func (g *Group) Add(db *sql.DB) (err error) {
 }
 
 func (t *Task) GetById(db *sql.DB) (err error) {
+	if t.Group == nil {
+		t.Group = &Group{}
+	}
+	if t.Status == nil {
+		t.Status = &Status{}
+	}
+	if t.Parent == nil {
+		t.Parent = &Task{}
+	}
 	query := `
         SELECT 
             id 
@@ -87,10 +90,10 @@ func (t *Task) GetById(db *sql.DB) (err error) {
             , sys_created
             , sys_updated
             , sys_status
-        FROM task_list_all;
+        FROM task_list_all
         WHERE id = ?;
     `
-	err = db.QueryRow(query, t.Id).Scan(
+	if err = db.QueryRow(query, t.Id).Scan(
 		&t.Id,
 		&t.Summary,
 		&t.Priority,
@@ -106,7 +109,72 @@ func (t *Task) GetById(db *sql.DB) (err error) {
 		&t.DateCreated,
 		&t.DateUpdated,
 		&t.SysStatus,
-	)
+	); err != nil {
+		return err
+	}
+	if t.Parent.Id != 0 {
+		if err = t.Parent.GetById(db); err != nil {
+			return err
+		}
+	}
+
+	return err
+}
+func (t *Task) GetChildren(db *sql.DB) (err error) {
+	query := `
+        SELECT 
+            id 
+            , summary
+            , priority
+            , date_due
+            , date_completed
+            , description
+            , closing_comment
+            , status_id
+            , status_name
+            , group_id
+            , group_name
+            , parent_id
+            , sys_created
+            , sys_updated
+            , sys_status
+        FROM task_list_all
+        WHERE parent_id = ?;
+    `
+	rows, err := db.Query(query, t.Id)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var ct Task
+		ct.Status = &Status{}
+		ct.Group = &Group{}
+		ct.Parent = &Task{}
+
+		if err = rows.Scan(
+			&ct.Id,
+			&ct.Summary,
+			&ct.Priority,
+			&ct.DateDue,
+			&ct.DateCompleted,
+			&ct.Description,
+			&ct.ClosingComment,
+			&ct.Status.Id,
+			&ct.Status.Name,
+			&ct.Group.Id,
+			&ct.Group.Name,
+			&ct.Parent.Id,
+			&ct.DateCreated,
+			&ct.DateUpdated,
+			&ct.SysStatus,
+		); err != nil {
+			return err
+		}
+		t.Children = append(t.Children, &ct)
+	}
+	err = rows.Err()
 	return err
 }
 
@@ -124,6 +192,13 @@ func (g *Group) GetByName(db *sql.DB) (err error) {
 		g.Name,
 	).Scan(&g.Id, &g.Name)
 	return err
+}
+
+func (g *Group) GetGroup(db *sql.DB) (err error) {
+	if g.Name != "" {
+		return g.GetByName(db)
+	}
+	return g.GetById(db)
 }
 
 func (t Task) Update(db *sql.DB) (err error) {
@@ -246,7 +321,7 @@ func ListTasks(db *sql.DB) (tl TaskList, err error) {
 		); err != nil {
 			return tl, err
 		}
-		tl = append(tl, t)
+		tl = append(tl, &t)
 	}
 	err = rows.Err()
 	return tl, err

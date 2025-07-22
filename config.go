@@ -1,7 +1,7 @@
 package main
 
 import (
-    "database/sql"
+	"database/sql"
 	"errors"
 	"os"
 	"path/filepath"
@@ -10,15 +10,15 @@ import (
 )
 
 type Config struct {
-	DBLocation   string `yaml:"dblocation"`
-	DBName       string `yaml:"dbname"`
-	DateFormat   string `yaml:"dateformat"`
-    GroupName    string `yaml:"defaultgroup"`
+	DBLocation string `yaml:"dblocation"`
+	DBName     string `yaml:"dbname"`
+	DateFormat string `yaml:"dateformat"`
+	GroupName  string `yaml:"defaultgroup"`
 }
 
 func Exists(path string) bool {
-    _, err := os.Stat(path)
-    return !errors.Is(err, os.ErrNotExist)
+	_, err := os.Stat(path)
+	return !errors.Is(err, os.ErrNotExist)
 }
 
 func OpenLogFile(path string) (*os.File, error) {
@@ -44,25 +44,25 @@ func (conf *Config) Prepare() (db *sql.DB, err error) {
 		if Exists(configFile) {
 			f, err := os.ReadFile(configFile)
 			if err != nil {
-                return nil, err
+				return nil, err
 			}
 			err = yaml.Unmarshal(f, &conf)
 			if err != nil {
-                return nil, err
+				return nil, err
 			}
 			if conf.DBLocation == "" {
 				conf.DBLocation = filepath.Dir("")
 			}
 
-			db, err := conf.OpenDB()
+			db, err = sql.Open("sqlite3", filepath.Join(conf.DBLocation, conf.DBName))
 			if err != nil {
-                return nil, err
+				return nil, err
 			}
-            if err = CheckDB(db); err != nil {
-                return nil, err
-            }
-            return db, err
+			if err = CheckDB(db); err != nil {
+				return nil, err
+			}
+			return db, err
 		}
 	}
-    return nil, ErrNoConfig
+	return nil, ErrNoConfig
 }

@@ -30,7 +30,7 @@ func (p *Parser) Print() {
 }
 
 func (p *Parser) ToString() string {
-	str := fmt.Sprintf("%d -", p.Verb)
+	str := fmt.Sprintf("%d -", p.Verb.Verb)
 	for _, s := range p.Args {
 		str = fmt.Sprintf("%s %d", str, s)
 	}

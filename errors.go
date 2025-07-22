@@ -14,6 +14,6 @@ var (
 	ErrInvalidDefaultKwarg  = errors.New("Parser: Verb does not support the default keyword argument")
 	ErrInvalidDate          = errors.New("Validator: Invalid date value")
 	ErrStringLength         = errors.New("Validator: String value is too long")
-    ErrDBVersion            = errors.New("DB Check: Database requires an update!")
-    ErrNoConfig             = errors.New("Configuration file not found! Please create the file or reinstall.")
+	ErrDBVersion            = errors.New("DB Check: Database requires an update!")
+	ErrNoConfig             = errors.New("Configuration file not found! Please create the file or reinstall.")
 )

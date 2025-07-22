@@ -14,48 +14,58 @@ func (p *Parser) Add(db *sql.DB) (msg string, err error) {
 	// Required: K_SUMMARY
 	// Optional: K_DESCRIPTION, K_DUEDATE, K_GROUP, K_PARENT, K_PRIORITY
 	var t Task
+	t.Group = &Group{DEFAULT_GROUP, "", nil}
+	t.Status = &Status{STATUS_NEW, "", nil}
+	t.Parent = &Task{}
+
 	t.Summary = p.Kwargs[K_SUMMARY].(string)
+	t.Priority = PRIORITY_MED
 
 	// Optional values
-	if value, ok := p.Kwargs[K_DUEDATE]; ok {
-		t.DateDue = value.(sql.NullTime)
-	}
 	if value, ok := p.Kwargs[K_DESCRIPTION]; ok {
 		t.Description = value.(string)
 	}
+	if value, ok := p.Kwargs[K_DUEDATE]; ok {
+		t.DateDue = value.(sql.NullTime)
+	}
+	if value, ok := p.Kwargs[K_GROUP]; ok {
+		t.Group.Name = value.(string)
+	}
 	if value, ok := p.Kwargs[K_PRIORITY]; ok {
 		t.Priority = value.(int)
-	} else {
-		t.Priority = PRIORITY_MED
 	}
 
 	// If parent is set, get parent task
-	// Group is set from the parent, the argument or default
 	if value, ok := p.Kwargs[K_PARENT]; ok {
 		t.Parent.Id = value.(int)
 		if err = t.Parent.GetById(db); err != nil {
 			return "", err
 		}
+		// If provided due date is later than parent's, use parent's
+		if t.Parent.DateDue.Valid && (t.DateDue.Time.After(t.Parent.DateDue.Time) ||
+			!t.DateDue.Valid) {
+			t.DateDue = t.Parent.DateDue
+		}
+
+		// Parent group overrides provided value
 		t.Group.Id = t.Parent.Group.Id
 		t.Group.Name = t.Parent.Group.Name
-	} else {
-		if value, ok := p.Kwargs[K_GROUP]; ok {
-			t.Group.Name = value.(string)
-		} else {
-			t.Group.Id = DEFAULT_GROUP
-		}
-		if err = t.Group.GetByName(db); err != nil {
-			if err = t.Group.Add(db); err != nil {
-				return "", err
-			}
+
+		// If priority is lower than parent's, use parent's
+		if t.Priority > t.Parent.Priority {
+			t.Priority = t.Parent.Priority
 		}
 	}
-
+	if err = t.Group.GetGroup(db); err != nil {
+		if err = t.Group.Add(db); err != nil {
+			return "", err
+		}
+	}
 	if err = t.Add(db); err != nil {
 		return "", err
 	}
 
-	msg = fmt.Sprintf("Added task:\n\tGroup: %s\n\t%d - %s", t.Group.Name, t.Id, t.Summary)
+	msg = fmt.Sprintf("\t%sAdded task:% d - %s%s\n", C_GREEN, t.Id, t.Summary, C_RESET)
 	return msg, nil
 }
 
@@ -65,48 +75,99 @@ func (p *Parser) Complete(db *sql.DB) (msg string, err error) {
 	var t Task
 	t.Id = p.Kwargs[K_ID].(int)
 	if err = t.GetById(db); err != nil {
-		return "", err
+		return msg, err
 	}
+
+	t.Status.Id = STATUS_COMPLETED
+	t.DateCompleted = NullNow()
+
 	if value, ok := p.Kwargs[K_COMMENT]; ok {
 		t.ClosingComment = value.(string)
 	}
-	t.DateCompleted = NullNow()
 	if err = t.Update(db); err != nil {
-		return "", err
+		return msg, err
 	}
-	msg = fmt.Sprintf("Completed task: %d - %s", t.Id, t.Summary)
-	return msg, nil
+
+	var bs strings.Builder
+	bs.WriteString(fmt.Sprintf("Completed task: %d - %s", t.Id, t.Summary))
+
+	// Close subtasks
+	if err = t.GetChildren(db); err != nil {
+		return msg, err
+	}
+	fmt.Printf("Children: %d\n", len(t.Children))
+	if len(t.Children) > 0 {
+		plural := ""
+		if len(t.Children) > 1 {
+			plural = "s"
+		}
+		bs.WriteString(fmt.Sprintf("\nand %d subtask%s:", len(t.Children), plural))
+
+		for _, c := range t.Children {
+			(*c).Status.Id = STATUS_COMPLETED
+			(*c).DateCompleted = NullNow()
+			(*c).ClosingComment = "Closed by main task."
+
+			if err = (*c).Update(db); err != nil {
+				return msg, err
+			}
+			bs.WriteString(fmt.Sprintf("\n\t%d - %s", (*c).Id, (*c).Summary))
+		}
+	}
+	bs.WriteString("\n")
+
+	return bs.String(), err
 }
 
-func (p *Parser) Configure(*sql.DB) (msg string, err error) {
-	// Optional: A_LOCAL, A_RESET
-	return msg, err
-}
 func (p *Parser) Count(*sql.DB) (msg string, err error) {
 	// Optional: A_ALL, A_COMPLETED, A_DUE, A_INPROGRESS, A_ONHOLD, A_OPEN, A_OVERDUE
 	return msg, err
 }
+
 func (p *Parser) Delete(db *sql.DB) (msg string, err error) {
 	// Required: K_ID
 	// Optional: A_ALL
 	var t Task
 	t.Id = p.Kwargs[K_ID].(int)
 	if err = t.GetById(db); err != nil {
-		return "", err
+		return msg, err
 	}
 	if err = t.Delete(db); err != nil {
-		return "", err
+		return msg, err
 	}
-	msg = fmt.Sprintf("Deleted task: %d - %s", t.Id, t.Summary)
+	var bs strings.Builder
+	bs.WriteString(fmt.Sprintf("Deleted task: %d - %s", t.Id, t.Summary))
 
-	if p.ArgIsPresent(A_ALL) {
-		rows, err := t.DeleteChildren(db)
-		if err != nil {
-			return "", err
-		}
-		msg = fmt.Sprintf("%s\n\tand %d subtasks", msg, rows)
+	// Unlink or delete subtasks
+	if err = t.GetChildren(db); err != nil {
+		return msg, err
 	}
-	return msg, err
+	if len(t.Children) > 0 {
+		plural := ""
+		if len(t.Children) > 1 {
+			plural = "s"
+		}
+		if p.ArgIsPresent(A_ALL) {
+			bs.WriteString(fmt.Sprintf("\nand %d subtask%s:", len(t.Children), plural))
+			for _, c := range t.Children {
+				if err = c.Delete(db); err != nil {
+					return msg, err
+				}
+				bs.WriteString(fmt.Sprintf("\n\t%d - %s", c.Id, c.Summary))
+			}
+		} else {
+			bs.WriteString(fmt.Sprintf("\nand unlinked %d subtask%s:", len(t.Children), plural))
+			for _, c := range t.Children {
+				c.Parent.Id = 0
+				if err = c.Update(db); err != nil {
+					return msg, err
+				}
+				bs.WriteString(fmt.Sprintf("\n\t%d - %s", c.Id, c.Summary))
+			}
+		}
+	}
+	bs.WriteString("\n")
+	return bs.String(), err
 }
 func (p *Parser) Help(db *sql.DB) (msg string, err error) {
 	return helpString, nil
@@ -153,23 +214,31 @@ func (p *Parser) Show(db *sql.DB) (msg string, err error) {
 	if err = t.GetById(db); err != nil {
 		return "", err
 	}
+	if err = t.GetChildren(db); err != nil {
+		return "", err
+	}
 	var bs strings.Builder
 	bs.WriteString(fmt.Sprintf("%sTASK %d%s\n", C_BOLD, t.Id, C_RESET))
 	if t.SysStatus == SYS_DELETED {
-		bs.WriteString(fmt.Sprintf("\t%s%sDELETED%s\n", C_RED, C_BOLD, t.Id, C_RESET))
+		bs.WriteString(fmt.Sprintf("\t%s%sDELETED%s\n", C_RED, C_BOLD, C_RESET))
 	}
-	bs.WriteString(fmt.Sprintf("\tGroup:\t%s\n", t.Group.Name))
+	bs.WriteString(fmt.Sprintf("\tGroup:\t\t%s\n", t.Group.Name))
 	bs.WriteString(fmt.Sprintf("\tSummary:\t%s\n", t.Summary))
-	bs.WriteString(fmt.Sprintf("\tStatus:\t%s\n", t.Status.Name))
+	bs.WriteString(fmt.Sprintf("\tStatus:\t\t%s\n", t.Status.Name))
 	bs.WriteString(fmt.Sprintf("\tDue Date:\t%s\n", t.DateDue.Time))
-	bs.WriteString(fmt.Sprintf("\tPriority:\t%s\n", t.Priority))
+	bs.WriteString(fmt.Sprintf("\tPriority:\t%d\n", t.Priority))
 	bs.WriteString(fmt.Sprintf("\tDescription:\t%s\n", t.Description))
-	if t.Parent != nil {
+	if t.Parent.Id != 0 {
 		bs.WriteString(fmt.Sprintf("\tParent: %d - %s\n", t.Parent.Id, t.Parent.Summary))
 	}
 	if t.Status.Id == STATUS_COMPLETED {
-		bs.WriteString(fmt.Sprintf("\tCompleted: %s\n", t.DateCompleted.Time))
-		bs.WriteString(fmt.Sprintf("\tComment: %s\n", t.ClosingComment))
+		bs.WriteString(fmt.Sprintf("\tCompleted:\t %s\n", t.DateCompleted.Time))
+		bs.WriteString(fmt.Sprintf("\tComment:\t\t%s\n", t.ClosingComment))
+	}
+	bs.WriteString(fmt.Sprintf("\tChildren:\t\t%v\n", t.Children))
+	for _, c := range t.Children {
+		bs.WriteString(fmt.Sprintf("%v\n", c))
+		bs.WriteString(fmt.Sprintf("%v\n", *c))
 	}
 	msg = bs.String()
 	return msg, err

@@ -3,18 +3,18 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"github.com/nonerkao/color-aware-tabwriter"
 	"log"
 	"os"
-	"slices"
-	"time"
+
+	_ "github.com/nonerkao/color-aware-tabwriter"
 )
 
 func main() {
 	var conf Config
+	var db *sql.DB
 	args := os.Args[1:]
 
-    parser, err := NewParser(V_LIST, []int{A_OPEN}, map[int]interface{}{})
+	parser, err := NewParser(V_LIST, []int{A_OPEN}, map[int]interface{}{})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -22,163 +22,40 @@ func main() {
 		log.Fatal(err)
 	}
 
-    db, err := conf.Prepare()
-    defer db.Close()
-    
-    msg, err := parser.Verb.Call(&parser, db)
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Print(msg)
-
-    // ===== Left for reference
-	if parser.Verb.Verb == V_COUNT {
-		var c Counts
-		if err = c.GetCounts(db); err != nil {
-			log.Fatal(err)
-		}
-		var count int
-		switch parser.GetArg(0) {
-		case A_ALL:
-			count = c.All
-		case A_NEW:
-			count = c.New
-		case A_INPROGRESS:
-			count = c.InProgress
-		case A_ONHOLD:
-			count = c.OnHold
-		case A_COMPLETED:
-			count = c.Completed
-		case A_OPEN:
-			count = c.Open
-		case A_OVERDUE:
-			count = c.Overdue
-		}
-		fmt.Printf("%d", count)
-		return
+	db, err = conf.Prepare()
+	if err != nil {
+		log.Fatal(err)
 	}
+	defer db.Close()
 
-	if slices.Contains([]int{V_COMPLETE, V_DELETE, V_REOPEN, V_UPDATE}, parser.Verb.Verb) {
-		var t Task
-		addGroup := false
-
-		t.Id = parser.Kwargs[K_ID].(int)
-		if err = t.GetById(db); err != nil {
-			log.Fatal(err)
-		}
-		switch parser.Verb.Verb {
-		case V_COMPLETE:
-			t.DateCompleted = NullNow()
-		case V_REOPEN:
-			t.DateCompleted.Valid = false
-		case V_UPDATE:
-			if summary, ok := parser.Kwargs[K_SUMMARY]; ok {
-				t.Summary = summary.(string)
-			}
-			if priority, ok := parser.Kwargs[K_PRIORITY]; ok {
-				t.Priority = priority.(int)
-			}
-			if duedate, ok := parser.Kwargs[K_DUEDATE]; ok {
-				t.DateDue = duedate.(sql.NullTime)
-			}
-			if group, ok := parser.Kwargs[K_GROUP]; ok {
-				t.Group.Name = group.(string)
-				if err = t.Group.GetByName(db); err == sql.ErrNoRows {
-					addGroup = true
-				}
-			}
-		}
-
-		if parser.Verb.Verb == V_DELETE {
-			err = t.Delete(db)
-		} else {
-			if addGroup {
-				if err = t.Group.Add(db); err != nil {
-					log.Fatal(err)
-				}
-			}
-			err = t.Update(db)
-		}
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("Task %d has been added.\n", t.Id)
+	msg, err := parser.Verb.Call(&parser, db)
+	if err != nil {
+		log.Fatal(err)
 	}
+	fmt.Print("TODO:", msg)
 
-	if parser.Verb.Verb == V_ADD {
-		var t Task
-		//t.Id
-		t.Description = parser.Kwargs[K_SUMMARY].(string)
-		t.Priority = 500
-		if priority, ok := parser.Kwargs[K_PRIORITY]; ok {
-			t.Priority = priority.(int)
-		}
-		//t.Due
-		if duedate, ok := parser.Kwargs[K_DUEDATE]; ok {
-			t.DateDue = duedate.(sql.NullTime)
-		}
-		//t.Completed
-		t.DateCreated = NullNow()
-		t.DateUpdated = NullNow()
-		t.Group.Name = "Default"
-		if group, ok := parser.Kwargs[K_GROUP]; ok {
-			t.Group.Name = group.(string)
-		}
-		if err = t.Group.GetByName(db); err == sql.ErrNoRows {
-			if err = t.Group.Add(db); err != nil {
-				log.Fatal(err)
-			}
-		}
-		if err = t.Add(db); err != nil {
-			log.Fatal(err)
-		}
+	// ===== Left for reference
 
-		fmt.Printf("Added task %d: %s\n", t.Id, t.Description)
-	}
-
-	if parser.Verb.Verb == V_LIST {
-		tl, err := ListTasks(db)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		w := tabwriter.NewWriter(os.Stdout, 4, 0, 2, ' ', 0)
-		fmt.Fprintf(w, "%s\tID\tGroup\tStatus\tDue\tDescription%s\n", C_BOLD, C_RESET)
-
-		for _, t := range tl {
-			lColor := C_WHITE
-			tStatus := "Open"
-
-			tDue := HumanDue(t.DateDue.Time, conf.DateFormat)
-			if !t.DateDue.Valid {
-				tDue = ""
-			}
-
-			fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s%s\n", lColor, t.Id, t.Group.Name, tStatus, tDue, t.Description, C_RESET)
-		}
-		w.Flush()
-	}
-	if parser.Verb.Verb == V_SHOW {
-		var t Task
-
-		t.Id = parser.Kwargs[K_ID].(int)
-		if err = t.GetById(db); err != nil {
-			log.Fatal(err)
-		}
-
-		tStatus := "Open"
-		if t.DateDue.Valid && t.DateDue.Time.Before(time.Now()) {
-			tStatus = Color("Overdue", C_RED, true)
-		}
-
-		fmt.Printf("Task ID: %d\n", t.Id)
-		fmt.Printf("Status: %s\n", tStatus)
-		fmt.Printf("Group: %s\n", t.Group.Name)
-
-		fmt.Printf("Priority: %d\n", t.Priority)
-		if t.DateDue.Valid {
-			fmt.Printf("Due: %s\n", t.DateDue.Time.Format(conf.DateFormat))
-		}
-		fmt.Printf("\n%s\n\n", Color(t.Description, C_WHITE, true))
-	}
+	//	if parser.Verb.Verb == V_LIST {
+	//		tl, err := ListTasks(db)
+	//		if err != nil {
+	//			log.Fatal(err)
+	//		}
+	//
+	//		w := tabwriter.NewWriter(os.Stdout, 4, 0, 2, ' ', 0)
+	//		fmt.Fprintf(w, "%s\tID\tGroup\tStatus\tDue\tDescription%s\n", C_BOLD, C_RESET)
+	//
+	//		for _, t := range tl {
+	//			lColor := C_WHITE
+	//			tStatus := "Open"
+	//
+	//			tDue := HumanDue(t.DateDue.Time, conf.DateFormat)
+	//			if !t.DateDue.Valid {
+	//				tDue = ""
+	//			}
+	//
+	//			fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s%s\n", lColor, t.Id, t.Group.Name, tStatus, tDue, t.Description, C_RESET)
+	//		}
+	//		w.Flush()
+	//	}
 }
