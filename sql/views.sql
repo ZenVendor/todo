@@ -50,7 +50,7 @@ where 1=1
     and t.status_id = 1;
 
 -- open
-create view if not exists task_list_ongoing as
+create view if not exists task_list_open as
 select 
     t.id 
     , t.summary
@@ -177,6 +177,35 @@ from
     inner join TaskStatus s on s.id = t.status_id
 where 1=1
     and t.sys_status = 0;
+
+-- overdue
+create view if not exists task_list_open as
+select 
+    t.id 
+    , t.summary
+    , t.priority
+    , t.date_due
+    , t.date_completed
+    , t.description
+    , t.closing_comment
+    , t.status_id
+    , s.status_name
+    , t.group_id
+    , g.group_name
+    , t.parent_id
+    , t.sys_created
+    , t.sys_updated
+    , t.sys_status
+from
+    Task t
+    inner join TaskGroup g on g.id = t.group_id
+    inner join TaskStatus s on s.id = t.status_id
+where 1=1
+    and t.sys_status = 1
+    and t.status_id in (1, 2, 3)
+    and t.date_due is not null
+    and t.date_due < current_date;
+
 
 -- groups
 create view if not exists group_list as 

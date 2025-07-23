@@ -4,7 +4,7 @@ const (
 	VERSION      = "2.0.0"
 	DB_VERSION   = "fc4247a1b0cbfbfcff856355ba6ca58e"
 	TRIG_VERSION = "84bd34b5905b45c7f0bde28a28c64143"
-	VIEW_VERSION = "6c8c6c88513a69f09382ea882665f204"
+	VIEW_VERSION = "6dfef78f0d49b3f5843f655ecdff3965"
 )
 
 // Config defaults

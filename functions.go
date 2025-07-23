@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	_ "embed"
 	"fmt"
+	"github.com/nonerkao/color-aware-tabwriter"
+	"os"
 	"strings"
 )
 
@@ -212,8 +214,59 @@ func (p *Parser) Hold(db *sql.DB) (msg string, err error) {
 	return bs.String(), err
 }
 func (p *Parser) List(db *sql.DB) (msg string, err error) {
-	//	Optional: A_ALL, A_COMPLETED, A_DELETED, A_DUE, A_GROUPS, A_INPROGRESS, A_ONHOLD, A_OPEN, A_OVERDUE
+	//	Optional: A_ALL, A_COMPLETED, A_DELETED, A_DUE, A_INPROGRESS, A_NEW, A_ONHOLD, A_OPEN, A_OVERDUE
+	var tl TaskList
 
+	switch (*p).Args[0] {
+	case A_ALL:
+		tl, err = ListTasksAll(db)
+	case A_COMPLETED:
+		tl, err = ListTasksCompleted(db)
+	case A_DELETED:
+		tl, err = ListTasksDeleted(db)
+	case A_INPROGRESS:
+		tl, err = ListTasksInProgress(db)
+	case A_NEW:
+		tl, err = ListTasksNew(db)
+	case A_ONHOLD:
+		tl, err = ListTasksOnHold(db)
+	case A_OPEN, A_DUE:
+		tl, err = ListTasksOpen(db)
+	case A_OVERDUE:
+		tl, err = ListTasksOverdue(db)
+	}
+	if err != nil {
+		return msg, err
+	}
+	w := tabwriter.NewWriter(os.Stdout, 4, 0, 2, ' ', 0)
+	switch (*p).Args[0] {
+	case A_ALL, A_DELETED:
+		fmt.Fprintf(w, "%s\tID\tGroup\tStatus\tDate Due\tDate Completed\tSummary%s\n", C_BOLD, C_RESET)
+	case A_COMPLETED:
+		fmt.Fprintf(w, "%s\tID\tGroup\tStatus\tDate Completed\tSummary%s\n", C_BOLD, C_RESET)
+	default:
+		fmt.Fprintf(w, "%s\tID\tGroup\tStatus\tDate Due\tSummary%s\n", C_BOLD, C_RESET)
+	}
+
+	for _, t := range tl {
+		tDue := HumanDue(t.DateDue.Time, "2006-01-02")
+		if !t.DateDue.Valid {
+			tDue = ""
+		}
+		tCompleted := t.DateCompleted.Time.Format("2006-01-02")
+		if !t.DateCompleted.Valid {
+			tCompleted = ""
+		}
+		switch (*p).Args[0] {
+		case A_ALL, A_DELETED:
+			fmt.Fprintf(w, "\t%d\t%s\t%s\t%s\t%s\t%s\n", t.Id, t.Group.Name, t.Status.Name, tDue, tCompleted, t.Summary)
+		case A_COMPLETED:
+			fmt.Fprintf(w, "\t%d\t%s\t%s\t%s\t%s\n", t.Id, t.Group.Name, t.Status.Name, tCompleted, t.Summary)
+		default:
+			fmt.Fprintf(w, "\t%d\t%s\t%s\t%s\t%s\n", t.Id, t.Group.Name, t.Status.Name, tDue, t.Summary)
+		}
+	}
+	w.Flush()
 	return msg, err
 }
 func (p *Parser) Reopen(db *sql.DB) (msg string, err error) {

@@ -274,27 +274,9 @@ func (g Group) Delete(db *sql.DB) (err error) {
 	return err
 }
 
-func ListTasks(db *sql.DB) (tl TaskList, err error) {
-	query := `
-        SELECT 
-            id 
-            , summary
-            , priority
-            , date_due
-            , date_completed
-            , description
-            , closing_comment
-            , status_id
-            , status_name
-            , group_id
-            , group_name
-            , parent_id
-            , sys_created
-            , sys_updated
-            , sys_status
-        FROM task_list_all;
-    `
-	rows, err := db.Query(query, NullNow())
+func ListTasksAll(db *sql.DB) (tl TaskList, err error) {
+	query := "SELECT id , summary, priority, date_due, date_completed, status_id, status_name, group_id, group_name FROM task_list_all;"
+	rows, err := db.Query(query)
 	if err != nil {
 		return tl, err
 	}
@@ -302,23 +284,165 @@ func ListTasks(db *sql.DB) (tl TaskList, err error) {
 
 	for rows.Next() {
 		var t Task
-		if err = rows.Scan(
-			&t.Id,
-			&t.Summary,
-			&t.Priority,
-			&t.DateDue,
-			&t.DateCompleted,
-			&t.Description,
-			&t.ClosingComment,
-			&t.Status.Id,
-			&t.Status.Name,
-			&t.Group.Id,
-			&t.Group.Name,
-			&t.Parent.Id,
-			&t.DateCreated,
-			&t.DateUpdated,
-			&t.SysStatus,
-		); err != nil {
+		t.Status = &Status{}
+		t.Group = &Group{}
+
+		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status.Id, &t.Status.Name, &t.Group.Id, &t.Group.Name)
+		if err != nil {
+			return tl, err
+		}
+		tl = append(tl, &t)
+	}
+	err = rows.Err()
+	return tl, err
+}
+func ListTasksCompleted(db *sql.DB) (tl TaskList, err error) {
+	query := "SELECT id , summary, priority, date_due, date_completed, status_id, status_name, group_id, group_name FROM task_list_completed;"
+	rows, err := db.Query(query)
+	if err != nil {
+		return tl, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var t Task
+		t.Status = &Status{}
+		t.Group = &Group{}
+
+		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status.Id, &t.Status.Name, &t.Group.Id, &t.Group.Name)
+		if err != nil {
+			return tl, err
+		}
+		tl = append(tl, &t)
+	}
+	err = rows.Err()
+	return tl, err
+}
+func ListTasksDeleted(db *sql.DB) (tl TaskList, err error) {
+	query := "SELECT id , summary, priority, date_due, date_completed, status_id, status_name, group_id, group_name FROM task_list_Deleted;"
+	rows, err := db.Query(query)
+	if err != nil {
+		return tl, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var t Task
+		t.Status = &Status{}
+		t.Group = &Group{}
+
+		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status.Id, &t.Status.Name, &t.Group.Id, &t.Group.Name)
+		if err != nil {
+			return tl, err
+		}
+		tl = append(tl, &t)
+	}
+	err = rows.Err()
+	return tl, err
+}
+func ListTasksInProgress(db *sql.DB) (tl TaskList, err error) {
+	query := "SELECT id , summary, priority, date_due, date_completed, status_id, status_name, group_id, group_name FROM task_list_in_progress;"
+	rows, err := db.Query(query)
+	if err != nil {
+		return tl, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var t Task
+		t.Status = &Status{}
+		t.Group = &Group{}
+
+		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status.Id, &t.Status.Name, &t.Group.Id, &t.Group.Name)
+		if err != nil {
+			return tl, err
+		}
+		tl = append(tl, &t)
+	}
+	err = rows.Err()
+	return tl, err
+}
+func ListTasksNew(db *sql.DB) (tl TaskList, err error) {
+	query := "SELECT id , summary, priority, date_due, date_completed, status_id, status_name, group_id, group_name FROM task_list_New;"
+	rows, err := db.Query(query)
+	if err != nil {
+		return tl, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var t Task
+		t.Status = &Status{}
+		t.Group = &Group{}
+
+		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status.Id, &t.Status.Name, &t.Group.Id, &t.Group.Name)
+		if err != nil {
+			return tl, err
+		}
+		tl = append(tl, &t)
+	}
+	err = rows.Err()
+	return tl, err
+}
+func ListTasksOnHold(db *sql.DB) (tl TaskList, err error) {
+	query := "SELECT id , summary, priority, date_due, date_completed, status_id, status_name, group_id, group_name FROM task_list_on_hold;"
+	rows, err := db.Query(query)
+	if err != nil {
+		return tl, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var t Task
+		t.Status = &Status{}
+		t.Group = &Group{}
+
+		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status.Id, &t.Status.Name, &t.Group.Id, &t.Group.Name)
+		if err != nil {
+			return tl, err
+		}
+		tl = append(tl, &t)
+	}
+	err = rows.Err()
+	return tl, err
+}
+func ListTasksOpen(db *sql.DB) (tl TaskList, err error) {
+	query := "SELECT id , summary, priority, date_due, date_completed, status_id, status_name, group_id, group_name FROM task_list_open;"
+	rows, err := db.Query(query)
+	if err != nil {
+		return tl, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var t Task
+		t.Status = &Status{}
+		t.Group = &Group{}
+
+		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status.Id, &t.Status.Name, &t.Group.Id, &t.Group.Name)
+		if err != nil {
+			return tl, err
+		}
+		tl = append(tl, &t)
+	}
+	err = rows.Err()
+	return tl, err
+}
+func ListTasksOverdue(db *sql.DB) (tl TaskList, err error) {
+	query := "SELECT id , summary, priority, date_due, date_completed, status_id, status_name, group_id, group_name FROM task_list_overdue;"
+	rows, err := db.Query(query)
+	if err != nil {
+		return tl, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var t Task
+		t.Status = &Status{}
+		t.Group = &Group{}
+
+		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status.Id, &t.Status.Name, &t.Group.Id, &t.Group.Name)
+		if err != nil {
 			return tl, err
 		}
 		tl = append(tl, &t)

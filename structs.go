@@ -109,7 +109,7 @@ var verbs = Verbs{
 	Verb{
 		V_LIST,
 		X_NIL,
-		[]int{A_ALL, A_COMPLETED, A_DELETED, A_DUE, A_GROUPS, A_INPROGRESS, A_ONHOLD, A_OPEN, A_OVERDUE},
+		[]int{A_ALL, A_COMPLETED, A_DELETED, A_DUE, A_GROUPS, A_INPROGRESS, A_NEW, A_ONHOLD, A_OPEN, A_OVERDUE},
 		[]int{},
 		1,
 		(*Parser).List,
