@@ -1,6 +1,8 @@
 -- TRIGGERS
 
 -- Create Task
+
+drop trigger if exists TRG_Audit_Create_Task_Main;
 create trigger if not exists TRG_Audit_Create_Task_Main 
     after insert on Task
     begin
@@ -9,11 +11,12 @@ create trigger if not exists TRG_Audit_Create_Task_Main
         insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
         values (current_timestamp, 'create', 'Task', new.id, 'priority', new.priority);
         insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
-        values (current_timestamp, 'create', 'Task', new.id, 'group_id', new.group_id);
+        values (current_timestamp, 'create', 'Task', new.id, 'project_id', new.project_id);
         insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
-        values (current_timestamp, 'create', 'Task', new.id, 'status_id', new.status_id);
+        values (current_timestamp, 'create', 'Task', new.id, 'status', new.status);
     end;
 
+drop trigger if exists TRG_Audit_Create_Task_Due;
 create trigger if not exists TRG_Audit_Create_Task_Due 
     after insert on Task
     when new.date_due is not null
@@ -22,6 +25,7 @@ create trigger if not exists TRG_Audit_Create_Task_Due
         values (current_timestamp, 'create', 'Task', new.id, 'date_due', new.date_due);
     end;
 
+drop trigger if exists TRG_Audit_Create_Task_Parent;
 create trigger if not exists TRG_Audit_Create_Task_Parent 
     after insert on Task
     when new.parent_id is not null
@@ -30,6 +34,7 @@ create trigger if not exists TRG_Audit_Create_Task_Parent
         values (current_timestamp, 'create', 'Task', new.id, 'parent_id', new.parent_id);
     end;
 
+drop trigger if exists TRG_Audit_Create_Task_Description;
 create trigger if not exists TRG_Audit_Create_Task_Description 
     after insert on Task
     when new.description is not null
@@ -39,6 +44,7 @@ create trigger if not exists TRG_Audit_Create_Task_Description
     end;
 
 -- Update Task
+drop trigger if exists TRG_Audit_Update_Task_summary;
 create trigger if not exists TRG_Audit_Update_Task_summary
     after update of summary on Task
     when new.summary <> old.summary
@@ -47,6 +53,7 @@ create trigger if not exists TRG_Audit_Update_Task_summary
         values (current_timestamp, 'update', 'Task', new.id, 'summary', new.summary);
     end;
 
+drop trigger if exists TRG_Audit_Update_Task_priority;
 create trigger if not exists TRG_Audit_Update_Task_priority
     after update of priority on Task
     when new.priority <> old.priority
@@ -55,6 +62,7 @@ create trigger if not exists TRG_Audit_Update_Task_priority
         values (current_timestamp, 'update', 'Task', new.id, 'priority', new.priority);
     end;
 
+drop trigger if exists TRG_Audit_Update_Task_date_due;
 create trigger if not exists TRG_Audit_Update_Task_date_due
     after update of date_due on Task
     when new.date_due <> old.date_due
@@ -63,6 +71,7 @@ create trigger if not exists TRG_Audit_Update_Task_date_due
         values (current_timestamp, 'update', 'Task', new.id, 'date_due', new.date_due);
     end;
 
+drop trigger if exists TRG_Audit_Update_Task_date_completed;
 create trigger if not exists TRG_Audit_Update_Task_date_completed
     after update of date_completed on Task
     when new.date_completed <> old.date_completed
@@ -71,6 +80,7 @@ create trigger if not exists TRG_Audit_Update_Task_date_completed
         values (current_timestamp, 'update', 'Task', new.id, 'date_completed', new.date_completed);
     end;
 
+drop trigger if exists TRG_Audit_Update_Task_description;
 create trigger if not exists TRG_Audit_Update_Task_description
     after update of description on Task
     when new.description <> old.description
@@ -79,6 +89,7 @@ create trigger if not exists TRG_Audit_Update_Task_description
         values (current_timestamp, 'update', 'Task', new.id, 'description', new.description);
     end;
 
+drop trigger if exists TRG_Audit_Update_Task_closing_comment;
 create trigger if not exists TRG_Audit_Update_Task_closing_comment
     after update of closing_comment on Task
     when new.closing_comment <> old.closing_comment
@@ -87,22 +98,25 @@ create trigger if not exists TRG_Audit_Update_Task_closing_comment
         values (current_timestamp, 'update', 'Task', new.id, 'closing_comment', new.closing_comment);
     end;
 
-create trigger if not exists TRG_Audit_Update_Task_status_id
-    after update of status_id on Task
-    when new.status_id <> old.status_id
+drop trigger if exists TRG_Audit_Update_Task_status;
+create trigger if not exists TRG_Audit_Update_Task_status
+    after update of status on Task
+    when new.status <> old.status
     begin
         insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
-        values (current_timestamp, 'update', 'Task', new.id, 'status_id', new.status_id);
+        values (current_timestamp, 'update', 'Task', new.id, 'status', new.status);
     end;
 
-create trigger if not exists TRG_Audit_Update_Task_group_id
-    after update of group_id on Task
-    when new.group_id <> old.group_id
+drop trigger if exists TRG_Audit_Update_Task_project_id;
+create trigger if not exists TRG_Audit_Update_Task_project_id
+    after update of project_id on Task
+    when new.project_id <> old.project_id
     begin
         insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
-        values (current_timestamp, 'update', 'Task', new.id, 'group_id', new.group_id);
+        values (current_timestamp, 'update', 'Task', new.id, 'project_id', new.project_id);
     end;
 
+drop trigger if exists TRG_Audit_Update_Task_parent_id;
 create trigger if not exists TRG_Audit_Update_Task_parent_id
     after update of parent_id on Task
     when new.parent_id <> old.parent_id
@@ -111,6 +125,7 @@ create trigger if not exists TRG_Audit_Update_Task_parent_id
         values (current_timestamp, 'update', 'Task', new.id, 'parent_id', new.parent_id);
     end;
 
+drop trigger if exists TRG_Audit_Soft_Delete_Task;
 create trigger if not exists TRG_Audit_Soft_Delete_Task 
     after update of sys_status on Task
     when new.sys_status = 0
@@ -119,6 +134,7 @@ create trigger if not exists TRG_Audit_Soft_Delete_Task
         values (current_timestamp, 'delete', 'Task', new.id, 'sys_status', new.sys_status);
     end;
 
+drop trigger if exists TRG_Audit_Soft_Restore_Task;
 create trigger if not exists TRG_Audit_Soft_Restore_Task 
     after update of sys_status on Task
     when new.sys_status = 1
@@ -128,6 +144,7 @@ create trigger if not exists TRG_Audit_Soft_Restore_Task
     end;
 
 -- Delete Task
+drop trigger if exists TRG_Audit_Hard_Delete_Task;
 create trigger if not exists TRG_Audit_Hard_Delete_Task 
     after delete on Task
     begin
@@ -136,122 +153,66 @@ create trigger if not exists TRG_Audit_Hard_Delete_Task
     end;
 
 
--- Create TaskGroup
-create trigger if not exists TRG_Audit_Create_Group 
-    after insert on TaskGroup
+-- Create Project
+drop trigger if exists TRG_Audit_Create_Project;
+create trigger if not exists TRG_Audit_Create_Project 
+    after insert on Project
     begin
         insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
-        values (current_timestamp, 'create', 'Group', new.id, 'group_name', new.group_name);
+        values (current_timestamp, 'create', 'Project', new.id, 'project_name', new.project_name);
     end;
 
--- Update TaskGroup
-create trigger if not exists TRG_Audit_Update_Group_name
-    after update of name on TaskGroup
-    when new.group_name <> old.group_name
+-- Update Project
+drop trigger if exists TRG_Audit_Update_Project_name;
+create trigger if not exists TRG_Audit_Update_Project_name
+    after update of name on Project
+    when new.project_name <> old.project_name
     begin
         insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
-        values (current_timestamp, 'update', 'Group', new.id, 'group_name', new.group_name);
+        values (current_timestamp, 'update', 'Project', new.id, 'project_name', new.project_name);
     end;
 
-create trigger if not exists TRG_Audit_Soft_Delete_Group 
-    after update of sys_status on TaskGroup
+drop trigger if exists TRG_Audit_Soft_Delete_Project;
+create trigger if not exists TRG_Audit_Soft_Delete_Project 
+    after update of sys_status on Project
     when new.sys_status = 0
     begin
         insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
-        values (current_timestamp, 'delete', 'Group', new.id, 'sys_status', new.sys_status);
+        values (current_timestamp, 'delete', 'Project', new.id, 'sys_status', new.sys_status);
     end;
 
-create trigger if not exists TRG_Audit_Soft_Restore_Group 
-    after update of sys_status on TaskGroup
+drop trigger if exists TRG_Audit_Soft_Restore_Project;
+create trigger if not exists TRG_Audit_Soft_Restore_Project 
+    after update of sys_status on Project
     when new.sys_status = 1
     begin
         insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
-        values (current_timestamp, 'restore', 'Group', new.id, 'sys_status', new.sys_status);
+        values (current_timestamp, 'restore', 'Project', new.id, 'sys_status', new.sys_status);
     end;
 
--- Delete TaskGroup
-create trigger if not exists TRG_Audit_Hard_Delete_Group 
-    after delete on TaskGroup
+-- Delete Project
+drop trigger if exists TRG_Audit_Hard_Delete_Project;
+create trigger if not exists TRG_Audit_Hard_Delete_Project 
+    after delete on Project
     begin
         insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
-        values (current_timestamp, 'destroy', 'Group', old.id, 'group_name', old.group_name);
+        values (current_timestamp, 'destroy', 'Project', old.id, 'project_name', old.project_name);
     end;
 
-
--- Create TaskStatus
-create trigger if not exists TRG_Audit_Create_Status 
-    after insert on TaskStatus
-    begin
-        insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
-        values (current_timestamp, 'create', 'Status', new.id, 'status_name', new.status_name);
-    end;
-
--- Update TaskStatus
-create trigger if not exists TRG_Audit_Update_Status_name
-    after update of name on TaskStatus
-    when new.status_name <> old.status_name
-    begin
-        insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
-        values (current_timestamp, 'update', 'Status', new.id, 'status_name', new.status_name);
-    end;
-
-create trigger if not exists TRG_Audit_Soft_Delete_Status 
-    after update of sys_status on TaskStatus
-    when new.sys_status = 0
-    begin
-        insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
-        values (current_timestamp, 'delete', 'Status', new.id, 'sys_status', new.sys_status);
-    end;
-
-create trigger if not exists TRG_Audit_Soft_Restore_Status 
-    after update of sys_status on TaskStatus
-    when new.sys_status = 1
-    begin
-        insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
-        values (current_timestamp, 'restore', 'Status', new.id, 'sys_status', new.sys_status);
-    end;
-
--- Delete TaskStatus
-create trigger if not exists TRG_Audit_Hard_Delete_Status 
-    after delete on TaskStatus
-    begin
-        insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
-        values (current_timestamp, 'destroy', 'Status', old.id, 'status_name', old.status_name);
-    end;
-
-
--- checksums    
+-- Checksums    
+drop trigger if exists TRG_Audit_Create_SysVersion;
 create trigger if not exists TRG_Audit_Create_SysVersion
     after insert on SysVersion
     begin
         insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
         values (current_timestamp, 'create', 'SysVersion', new.id, 'cs_db', new.cs_db);
-        insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
-        values (current_timestamp, 'create', 'SysVersion', new.id, 'cs_trigger', new.cs_trigger);
-        insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
-        values (current_timestamp, 'create', 'SysVersion', new.id, 'cs_view', new.cs_view);
     end;
 
+drop trigger if exists TRG_Audit_Update_SysVersion_db;
 create trigger if not exists TRG_Audit_Update_SysVersion_db
     after update on SysVersion
     when new.cs_db <> old.cs_db
     begin
         insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
         values (current_timestamp, 'update', 'SysVersion', new.id, 'cs_db', new.cs_db);
-    end;
-
-create trigger if not exists TRG_Audit_Update_SysVersion_trigger
-    after update on SysVersion
-    when new.cs_trigger <> old.cs_trigger
-    begin
-        insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
-        values (current_timestamp, 'updadte', 'SysVersion', new.id, 'cs_trigger', new.cs_trigger);
-    end;
-
-create trigger if not exists TRG_Audit_Update_SysVersion_view
-    after update on SysVersion
-    when new.cs_view <> old.cs_view
-    begin
-        insert into AuditLog (event_date, operation, target_table, target_id, target_column, new_value) 
-        values (current_timestamp, 'update', 'SysVersion', new.id, 'cs_view', new.cs_view);
     end;

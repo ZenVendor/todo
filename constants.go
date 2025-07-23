@@ -1,10 +1,8 @@
 package main
 
 const (
-	VERSION      = "2.0.0"
-	DB_VERSION   = "fc4247a1b0cbfbfcff856355ba6ca58e"
-	TRIG_VERSION = "84bd34b5905b45c7f0bde28a28c64143"
-	VIEW_VERSION = "6dfef78f0d49b3f5843f655ecdff3965"
+	VERSION_APP = "2.0.0"
+	VERSION_DB  = "780f593b46f398d9c978a517479042d5"
 )
 
 // Config defaults
@@ -53,13 +51,13 @@ const (
 	V_VERSION
 	// Key-value args
 	K_COMMENT
-	K_DUEDATE
-	K_GROUP
-	K_ID
+	K_DATEDUE
 	K_DESCRIPTION
-	K_PRIORITY
-	K_SUMMARY
+	K_ID
 	K_PARENT
+	K_PRIORITY
+	K_PROJECT
+	K_SUMMARY
 	// Switches
 	A_ALL
 	A_COMPLETED

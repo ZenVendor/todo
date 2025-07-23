@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"os"
 )
@@ -26,9 +25,8 @@ func main() {
 	}
 	defer db.Close()
 
-	msg, err := parser.Verb.Call(&parser, db)
+	_, err = parser.Verb.Call(&parser, db, &conf)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Print("TODO:", msg)
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"slices"
 	"strings"
@@ -145,4 +146,55 @@ func (p *Parser) GetArg(index int) int {
 		return X_NIL
 	}
 	return p.Args[index]
+}
+
+func (t *Task) SetOptional(p *Parser, db *sql.DB) (err error) {
+
+	if value, ok := p.Kwargs[K_COMMENT]; ok {
+		t.ClosingComment = value.(string)
+	}
+	if value, ok := p.Kwargs[K_DATEDUE]; ok {
+		t.DateDue = value.(sql.NullTime)
+	}
+	if value, ok := p.Kwargs[K_DESCRIPTION]; ok {
+		t.Description = value.(string)
+	}
+	if value, ok := p.Kwargs[K_PROJECT]; ok {
+		t.Group.Name = value.(string)
+	}
+	if value, ok := p.Kwargs[K_PRIORITY]; ok {
+		t.Priority = value.(int)
+	}
+	if value, ok := p.Kwargs[K_SUMMARY]; ok {
+		t.Summary = value.(string)
+	}
+
+	// If parent is set, get parent task
+	if value, ok := p.Kwargs[K_PARENT]; ok {
+		t.Parent = &Task{}
+		t.Parent.Id = value.(int)
+		if err = t.Parent.GetTask(db); err != nil {
+			return err
+		}
+		// Parent group overrides provided value
+		t.Group.Id = t.Parent.Group.Id
+		t.Group.Name = t.Parent.Group.Name
+
+		// If provided due date is later than parent's, use parent's
+		if t.Parent.DateDue.Valid {
+			if !t.DateDue.Valid {
+				t.DateDue = t.Parent.DateDue
+			}
+			if t.DateDue.Time.After(t.Parent.DateDue.Time) {
+				t.DateDue = t.Parent.DateDue
+			}
+		}
+
+		// If priority is lower than parent's, use parent's
+		if t.Priority > t.Parent.Priority {
+			t.Priority = t.Parent.Priority
+		}
+	}
+
+	return err
 }

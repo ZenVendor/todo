@@ -2,35 +2,32 @@ package main
 
 import (
 	"database/sql"
-	_ "embed"
 	"fmt"
 	"github.com/nonerkao/color-aware-tabwriter"
 	"os"
 	"strings"
 )
 
-//go:embed help.txt
-var helpString string
-
-func (p *Parser) Add(db *sql.DB) (msg string, err error) {
+func (p *Parser) Add(db *sql.DB, conf *Config) (msg string, err error) {
 	// Required: K_SUMMARY
-	// Optional: K_DESCRIPTION, K_DUEDATE, K_GROUP, K_PARENT, K_PRIORITY
-	var t Task
-	t.Group = &Group{DEFAULT_GROUP, "", nil}
-	t.Status = &Status{STATUS_NEW, "", nil}
-	t.Parent = &Task{}
+	// Optional: K_DESCRIPTION, K_DATEDUE, K_GROUP, K_PARENT, K_PRIORITY
 
+	var t Task
+
+	// Set required summary and defaults
 	t.Summary = p.Kwargs[K_SUMMARY].(string)
 	t.Priority = PRIORITY_MED
+	t.Status = STATUS_NEW
+	t.Group = Group{DEFAULT_GROUP, ""}
 
 	// Optional values
 	if value, ok := p.Kwargs[K_DESCRIPTION]; ok {
 		t.Description = value.(string)
 	}
-	if value, ok := p.Kwargs[K_DUEDATE]; ok {
+	if value, ok := p.Kwargs[K_DATEDUE]; ok {
 		t.DateDue = value.(sql.NullTime)
 	}
-	if value, ok := p.Kwargs[K_GROUP]; ok {
+	if value, ok := p.Kwargs[K_PROJECT]; ok {
 		t.Group.Name = value.(string)
 	}
 	if value, ok := p.Kwargs[K_PRIORITY]; ok {
@@ -40,7 +37,7 @@ func (p *Parser) Add(db *sql.DB) (msg string, err error) {
 	// If parent is set, get parent task
 	if value, ok := p.Kwargs[K_PARENT]; ok {
 		t.Parent.Id = value.(int)
-		if err = t.Parent.GetById(db); err != nil {
+		if err = t.Parent.GetTask(db); err != nil {
 			return "", err
 		}
 		// If provided due date is later than parent's, use parent's
@@ -71,16 +68,16 @@ func (p *Parser) Add(db *sql.DB) (msg string, err error) {
 	return msg, nil
 }
 
-func (p *Parser) Complete(db *sql.DB) (msg string, err error) {
+func (p *Parser) Complete(db *sql.DB, conf *Config) (msg string, err error) {
 	// Required: K_ID
 	// Optional: K_COMMENT
 	var t Task
 	t.Id = p.Kwargs[K_ID].(int)
-	if err = t.GetById(db); err != nil {
+	if err = t.GetTask(db); err != nil {
 		return msg, err
 	}
 
-	t.Status.Id = STATUS_COMPLETED
+	t.Status = STATUS_COMPLETED
 	t.DateCompleted = NullNow()
 
 	if value, ok := p.Kwargs[K_COMMENT]; ok {
@@ -106,7 +103,7 @@ func (p *Parser) Complete(db *sql.DB) (msg string, err error) {
 		bs.WriteString(fmt.Sprintf("\nand %d subtask%s:", len(t.Children), plural))
 
 		for _, c := range t.Children {
-			(*c).Status.Id = STATUS_COMPLETED
+			(*c).Status = STATUS_COMPLETED
 			(*c).DateCompleted = NullNow()
 			(*c).ClosingComment = "Closed by main task."
 
@@ -121,17 +118,17 @@ func (p *Parser) Complete(db *sql.DB) (msg string, err error) {
 	return bs.String(), err
 }
 
-func (p *Parser) Count(*sql.DB) (msg string, err error) {
+func (p *Parser) Count(db *sql.DB, conf *Config) (msg string, err error) {
 	// Optional: A_ALL, A_COMPLETED, A_DUE, A_INPROGRESS, A_ONHOLD, A_OPEN, A_OVERDUE
 	return msg, err
 }
 
-func (p *Parser) Delete(db *sql.DB) (msg string, err error) {
+func (p *Parser) Delete(db *sql.DB, conf *Config) (msg string, err error) {
 	// Required: K_ID
 	// Optional: A_ALL
 	var t Task
 	t.Id = p.Kwargs[K_ID].(int)
-	if err = t.GetById(db); err != nil {
+	if err = t.GetTask(db); err != nil {
 		return msg, err
 	}
 	if err = t.Delete(db); err != nil {
@@ -171,17 +168,17 @@ func (p *Parser) Delete(db *sql.DB) (msg string, err error) {
 	bs.WriteString("\n")
 	return bs.String(), err
 }
-func (p *Parser) Help(db *sql.DB) (msg string, err error) {
-	return helpString, nil
+func (p *Parser) Help(db *sql.DB, conf *Config) (msg string, err error) {
+	return embedHelp, nil
 }
-func (p *Parser) Hold(db *sql.DB) (msg string, err error) {
+func (p *Parser) Hold(db *sql.DB, conf *Config) (msg string, err error) {
 	// Required: K_ID
 	var t Task
 	t.Id = p.Kwargs[K_ID].(int)
-	if err = t.GetById(db); err != nil {
+	if err = t.GetTask(db); err != nil {
 		return "", err
 	}
-	t.Status.Id = STATUS_HOLD
+	t.Status = STATUS_HOLD
 	if err = t.Update(db); err != nil {
 		return "", err
 	}
@@ -201,7 +198,7 @@ func (p *Parser) Hold(db *sql.DB) (msg string, err error) {
 		bs.WriteString(fmt.Sprintf("\nincluding %d subtask%s:", len(t.Children), plural))
 
 		for _, c := range t.Children {
-			(*c).Status.Id = STATUS_HOLD
+			(*c).Status = STATUS_HOLD
 
 			if err = (*c).Update(db); err != nil {
 				return msg, err
@@ -213,7 +210,7 @@ func (p *Parser) Hold(db *sql.DB) (msg string, err error) {
 
 	return bs.String(), err
 }
-func (p *Parser) List(db *sql.DB) (msg string, err error) {
+func (p *Parser) List(db *sql.DB, conf *Config) (msg string, err error) {
 	//	Optional: A_ALL, A_COMPLETED, A_DELETED, A_DUE, A_INPROGRESS, A_NEW, A_ONHOLD, A_OPEN, A_OVERDUE
 	var tl TaskList
 
@@ -259,24 +256,24 @@ func (p *Parser) List(db *sql.DB) (msg string, err error) {
 		}
 		switch (*p).Args[0] {
 		case A_ALL, A_DELETED:
-			fmt.Fprintf(w, "\t%d\t%s\t%s\t%s\t%s\t%s\n", t.Id, t.Group.Name, t.Status.Name, tDue, tCompleted, t.Summary)
+			fmt.Fprintf(w, "\t%d\t%s\t%s\t%s\t%s\t%s\n", t.Id, t.Group.Name, statusMap[t.Status], tDue, tCompleted, t.Summary)
 		case A_COMPLETED:
-			fmt.Fprintf(w, "\t%d\t%s\t%s\t%s\t%s\n", t.Id, t.Group.Name, t.Status.Name, tCompleted, t.Summary)
+			fmt.Fprintf(w, "\t%d\t%s\t%s\t%s\t%s\n", t.Id, t.Group.Name, statusMap[t.Status], tCompleted, t.Summary)
 		default:
-			fmt.Fprintf(w, "\t%d\t%s\t%s\t%s\t%s\n", t.Id, t.Group.Name, t.Status.Name, tDue, t.Summary)
+			fmt.Fprintf(w, "\t%d\t%s\t%s\t%s\t%s\n", t.Id, t.Group.Name, statusMap[t.Status], tDue, t.Summary)
 		}
 	}
 	w.Flush()
 	return msg, err
 }
-func (p *Parser) Reopen(db *sql.DB) (msg string, err error) {
+func (p *Parser) Reopen(db *sql.DB, conf *Config) (msg string, err error) {
 	// Required: K_ID,
 	var t Task
 	t.Id = p.Kwargs[K_ID].(int)
-	if err = t.GetById(db); err != nil {
+	if err = t.GetTask(db); err != nil {
 		return "", err
 	}
-	t.Status.Id = STATUS_INPROG
+	t.Status = STATUS_INPROG
 	t.DateCompleted.Valid = false
 
 	if err = t.Update(db); err != nil {
@@ -298,7 +295,7 @@ func (p *Parser) Reopen(db *sql.DB) (msg string, err error) {
 		bs.WriteString(fmt.Sprintf("\nincluding %d subtask%s:", len(t.Children), plural))
 
 		for _, c := range t.Children {
-			(*c).Status.Id = STATUS_INPROG
+			(*c).Status = STATUS_INPROG
 			(*c).DateCompleted.Valid = false
 
 			if err = (*c).Update(db); err != nil {
@@ -311,11 +308,11 @@ func (p *Parser) Reopen(db *sql.DB) (msg string, err error) {
 
 	return bs.String(), err
 }
-func (p *Parser) Show(db *sql.DB) (msg string, err error) {
+func (p *Parser) Show(db *sql.DB, conf *Config) (msg string, err error) {
 	// Required: K_ID,
 	var t Task
 	t.Id = p.Kwargs[K_ID].(int)
-	if err = t.GetById(db); err != nil {
+	if err = t.GetTask(db); err != nil {
 		return "", err
 	}
 	if err = t.GetChildren(db); err != nil {
@@ -329,14 +326,14 @@ func (p *Parser) Show(db *sql.DB) (msg string, err error) {
 	bs.WriteString(fmt.Sprintf("\tSummary:\t%s\n", t.Summary))
 	bs.WriteString(fmt.Sprintf("\tPriority:\t%d\n", t.Priority))
 	bs.WriteString(fmt.Sprintf("\tProject\t\t%s\n", t.Group.Name))
-	bs.WriteString(fmt.Sprintf("\tStatus:\t\t%s\n", t.Status.Name))
+	bs.WriteString(fmt.Sprintf("\tStatus:\t\t%s\n", statusMap[t.Status]))
 	if t.DateDue.Valid {
 		bs.WriteString(fmt.Sprintf("\tDue Date:\t%s\n", t.DateDue.Time.Format("2006-01-02")))
 	}
 	if t.Description != "" {
 		bs.WriteString(fmt.Sprintf("\tDescription:\t%s\n", t.Description))
 	}
-	if t.Status.Id == STATUS_COMPLETED {
+	if t.Status == STATUS_COMPLETED {
 		bs.WriteString(fmt.Sprintf("\tCompleted:\t %s\n", t.DateCompleted.Time.Format("2006-01-02")))
 		bs.WriteString(fmt.Sprintf("\tComment:\t%s\n", t.ClosingComment))
 	}
@@ -355,22 +352,22 @@ func (p *Parser) Show(db *sql.DB) (msg string, err error) {
 	return bs.String(), err
 }
 
-func (p *Parser) Update(db *sql.DB) (msg string, err error) {
+func (p *Parser) Update(db *sql.DB, conf *Config) (msg string, err error) {
 	// Required: K_ID,
-	//  Optional: K_DUEDATE, K_GROUP, K_DESCRIPTION, K_PRIORITY, K_SUMMARY, K_PARENT
+	//  Optional: K_DATEDUE, K_GROUP, K_DESCRIPTION, K_PRIORITY, K_SUMMARY, K_PARENT
 	var t Task
 	t.Id = p.Kwargs[K_ID].(int)
-	if err = t.GetById(db); err != nil {
+	if err = t.GetTask(db); err != nil {
 		return "", err
 	}
 	// Optional values
-	if value, ok := p.Kwargs[K_DUEDATE]; ok {
+	if value, ok := p.Kwargs[K_DATEDUE]; ok {
 		t.DateDue = value.(sql.NullTime)
 	}
 	if value, ok := p.Kwargs[K_DESCRIPTION]; ok {
 		t.Description = value.(string)
 	}
-	if value, ok := p.Kwargs[K_GROUP]; ok {
+	if value, ok := p.Kwargs[K_PROJECT]; ok {
 		t.Group.Name = value.(string)
 	}
 	if value, ok := p.Kwargs[K_PRIORITY]; ok {
@@ -384,7 +381,7 @@ func (p *Parser) Update(db *sql.DB) (msg string, err error) {
 	if value, ok := p.Kwargs[K_PARENT]; ok {
 		t.Parent.Id = value.(int)
 		if value.(int) != 0 {
-			if err = t.Parent.GetById(db); err != nil {
+			if err = t.Parent.GetTask(db); err != nil {
 				return "", err
 			}
 			// If provided due date is later than parent's, use parent's
@@ -415,7 +412,7 @@ func (p *Parser) Update(db *sql.DB) (msg string, err error) {
 	msg = fmt.Sprintf("Task updadted: %d - %s", t.Id, t.Summary)
 	return msg, err
 }
-func (p *Parser) Version(db *sql.DB) (msg string, err error) {
-	msg = fmt.Sprintf("TODO CLI\t::\tversion: %s\n", VERSION)
+func (p *Parser) Version(db *sql.DB, conf *Config) (msg string, err error) {
+	msg = fmt.Sprintf("TODO CLI\t::\tversion: %s\n", VERSION_APP)
 	return msg, nil
 }

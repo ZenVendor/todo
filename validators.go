@@ -13,12 +13,12 @@ func validateInt(value string) (interface{}, error) {
 	return strconv.Atoi(value)
 }
 
-func validateGroup(value string) (interface{}, error) {
-	group := strings.TrimSpace(value)
-	if len([]rune(group)) > 24 {
-		return "", fmt.Errorf("%w: %d/24", ErrStringLength, len([]rune(group)))
+func validateProject(value string) (interface{}, error) {
+	proj := strings.TrimSpace(value)
+	if len([]rune(proj)) > 24 {
+		return "", fmt.Errorf("%w: %d/24", ErrStringLength, len([]rune(proj)))
 	}
-	return group, nil
+	return proj, nil
 }
 func validatePriority(value string) (interface{}, error) {
 	return strconv.Atoi(value)

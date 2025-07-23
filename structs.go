@@ -2,6 +2,13 @@ package main
 
 import "database/sql"
 
+type Config struct {
+	DBLocation     string `yaml:"dblocation"`
+	DBName         string `yaml:"dbname"`
+	DateFormat     string `yaml:"dateformat"`
+	DefaultProject string `yaml:"defaultproject"`
+}
+
 type Task struct {
 	Id             int
 	Summary        string
@@ -10,8 +17,8 @@ type Task struct {
 	DateCompleted  sql.NullTime
 	Description    string
 	ClosingComment string
-	Status         *Status
-	Group          *Group
+	Status         int
+	Group          Group
 	Parent         *Task
 	Children       TaskList
 	DateCreated    sql.NullTime
@@ -21,14 +28,8 @@ type Task struct {
 type TaskList []*Task
 
 type Group struct {
-	Id     int
-	Name   string
-	Counts *Counts
-}
-type Status struct {
-	Id     int
-	Name   string
-	Counts *Counts
+	Id   int
+	Name string
 }
 
 type Counts struct {
@@ -38,6 +39,7 @@ type Counts struct {
 	OnHold     int
 	Completed  int
 	Open       int
+	Due        int
 	Overdue    int
 }
 
@@ -47,7 +49,7 @@ type Verb struct {
 	ValidArgs     []int
 	ValidKwargs   []int
 	MaxArgs       int
-	Call          func(*Parser, *sql.DB) (string, error)
+	Call          func(*Parser, *sql.DB, *Config) (string, error)
 }
 type Verbs []Verb
 
@@ -62,7 +64,7 @@ var verbs = Verbs{
 		V_ADD,
 		K_SUMMARY,
 		[]int{},
-		[]int{K_DUEDATE, K_GROUP, K_DESCRIPTION, K_PRIORITY, K_PARENT},
+		[]int{K_DATEDUE, K_PROJECT, K_DESCRIPTION, K_PRIORITY, K_PARENT},
 		1,
 		(*Parser).Add,
 	},
@@ -134,7 +136,7 @@ var verbs = Verbs{
 		V_UPDATE,
 		K_ID,
 		[]int{},
-		[]int{K_DUEDATE, K_GROUP, K_DESCRIPTION, K_PRIORITY, K_SUMMARY, K_PARENT},
+		[]int{K_DATEDUE, K_PROJECT, K_DESCRIPTION, K_PRIORITY, K_SUMMARY, K_PARENT},
 		1,
 		(*Parser).Update,
 	},

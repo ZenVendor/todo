@@ -1,15 +1,7 @@
 -- DDL
-create table if not exists TaskGroup (
+create table if not exists Project (
     id integer primary key not null,
-    group_name text not null,
-    sys_created datetime not null default current_timestamp,
-    sys_updated datetime not null default current_timestamp,
-    sys_status integer not null default 1
-);
-
-create table if not exists TaskStatus(
-    id integer primary key not null,
-    status_name text not null,
+    project_name text not null,
     sys_created datetime not null default current_timestamp,
     sys_updated datetime not null default current_timestamp,
     sys_status integer not null default 1
@@ -23,15 +15,14 @@ create table if not exists Task (
     date_completed datetime null,
     description text not null default '',
     closing_comment text not null default '',
-    status_id integer not null default 1,
-    group_id integer not null default 1,
+    status integer not null default 1,
+    project_id integer not null default 1,
     parent_id integer not null default 0,
     sys_created datetime not null default current_timestamp,
     sys_updated datetime not null default current_timestamp,
     sys_status integer not null default 1,
     
-    foreign key (status_id) references TaskStatus(id),
-    foreign key (group_id) references TaskGroup(id),
+    foreign key (project_id) references Project(id),
     foreign key (parent_id) references Task(id)
 );
 
@@ -47,7 +38,5 @@ create table if not exists AuditLog (
 
 create table if not exists SysVersion (
     id integer primary key not null,
-    cs_db text not null,
-    cs_trigger text not null,
-    cs_view text not null
+    cs_db text not null
 );

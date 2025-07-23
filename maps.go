@@ -13,6 +13,14 @@ var priorityMap = map[string]int{
 	"crit":     PRIORITY_CRIT,
 	"c":        PRIORITY_CRIT,
 }
+
+var statusMap = map[int]string{
+	STATUS_NEW:       "New",
+	STATUS_INPROG:    "In progress",
+	STATUS_HOLD:      "On hold",
+	STATUS_COMPLETED: "Completed",
+}
+
 var verbMap = map[string]int{
 	"add":      V_ADD,
 	"a":        V_ADD,
@@ -57,10 +65,10 @@ var argMap = map[string]int{
 var kwargMap = map[string]int{
 	"--comment":     K_COMMENT,
 	"-c":            K_COMMENT,
-	"--due":         K_DUEDATE,
-	"-d":            K_DUEDATE,
-	"--group":       K_GROUP,
-	"-g":            K_GROUP,
+	"--due":         K_DATEDUE,
+	"-d":            K_DATEDUE,
+	"--group":       K_PROJECT,
+	"-g":            K_PROJECT,
 	"--id":          K_ID,
 	"--description": K_DESCRIPTION,
 	"--parent":      K_PARENT,
@@ -71,11 +79,11 @@ var kwargMap = map[string]int{
 }
 var validatorMap = map[int]func(string) (interface{}, error){
 	K_COMMENT:     validateString,
-	K_DUEDATE:     validateDate,
-	K_GROUP:       validateGroup,
-	K_ID:          validateInt,
+	K_DATEDUE:     validateDate,
 	K_DESCRIPTION: validateString,
-	K_PRIORITY:    validatePriority,
-	K_SUMMARY:     validateSummary,
+	K_ID:          validateInt,
 	K_PARENT:      validateInt,
+	K_PRIORITY:    validatePriority,
+	K_PROJECT:     validateProject,
+	K_SUMMARY:     validateSummary,
 }
