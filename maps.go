@@ -1,6 +1,8 @@
 package main
 
 var priorityMap = map[string]int{
+	"none":     PRIORITY_NONE,
+	"n":        PRIORITY_NONE,
 	"low":      PRIORITY_LOW,
 	"l":        PRIORITY_LOW,
 	"medium":   PRIORITY_MED,
@@ -55,10 +57,10 @@ var argMap = map[string]int{
 	"-p":           A_INPROGRESS,
 	"--new":        A_NEW,
 	"-n":           A_NEW,
-	"--open":       A_OPEN,
-	"-o":           A_OPEN,
 	"--onhold":     A_ONHOLD,
 	"-h":           A_ONHOLD,
+	"--open":       A_OPEN,
+	"-o":           A_OPEN,
 	"--overdue":    A_OVERDUE,
 	"-od":          A_OVERDUE,
 }
@@ -67,13 +69,15 @@ var kwargMap = map[string]int{
 	"-c":            K_COMMENT,
 	"--due":         K_DATEDUE,
 	"-d":            K_DATEDUE,
-	"--group":       K_PROJECT,
-	"-g":            K_PROJECT,
 	"--id":          K_ID,
 	"--description": K_DESCRIPTION,
+	"--desc":        K_DESCRIPTION,
 	"--parent":      K_PARENT,
 	"--priority":    K_PRIORITY,
-	"-p":            K_PRIORITY,
+	"--pty":         K_PRIORITY,
+	"--project":     K_PROJECT,
+	"--proj":        K_PROJECT,
+	"-p":            K_PROJECT,
 	"--summary":     K_SUMMARY,
 	"-s":            K_SUMMARY,
 }

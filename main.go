@@ -25,7 +25,7 @@ func main() {
 	}
 	defer db.Close()
 
-	_, err = parser.Verb.Call(&parser, db, &conf)
+	err = parser.Verb.Call(&parser, db, &conf)
 	if err != nil {
 		log.Fatal(err)
 	}

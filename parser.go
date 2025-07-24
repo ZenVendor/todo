@@ -160,7 +160,7 @@ func (t *Task) SetOptional(p *Parser, db *sql.DB) (err error) {
 		t.Description = value.(string)
 	}
 	if value, ok := p.Kwargs[K_PROJECT]; ok {
-		t.Group.Name = value.(string)
+		t.Project.Name = value.(string)
 	}
 	if value, ok := p.Kwargs[K_PRIORITY]; ok {
 		t.Priority = value.(int)
@@ -171,14 +171,21 @@ func (t *Task) SetOptional(p *Parser, db *sql.DB) (err error) {
 
 	// If parent is set, get parent task
 	if value, ok := p.Kwargs[K_PARENT]; ok {
+
+		// Unset parent
+		if p.Kwargs[K_PARENT] == 0 {
+			t.Parent = nil
+			return err
+		}
+
 		t.Parent = &Task{}
 		t.Parent.Id = value.(int)
 		if err = t.Parent.GetTask(db); err != nil {
 			return err
 		}
 		// Parent group overrides provided value
-		t.Group.Id = t.Parent.Group.Id
-		t.Group.Name = t.Parent.Group.Name
+		t.Project.Id = t.Parent.Project.Id
+		t.Project.Name = t.Parent.Project.Name
 
 		// If provided due date is later than parent's, use parent's
 		if t.Parent.DateDue.Valid {
@@ -189,7 +196,6 @@ func (t *Task) SetOptional(p *Parser, db *sql.DB) (err error) {
 				t.DateDue = t.Parent.DateDue
 			}
 		}
-
 		// If priority is lower than parent's, use parent's
 		if t.Priority > t.Parent.Priority {
 			t.Priority = t.Parent.Priority

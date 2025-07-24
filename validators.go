@@ -21,7 +21,13 @@ func validateProject(value string) (interface{}, error) {
 	return proj, nil
 }
 func validatePriority(value string) (interface{}, error) {
-	return strconv.Atoi(value)
+	if intPty, err := strconv.Atoi(value); err == nil {
+		return intPty, nil
+	}
+	if intPty, ok := priorityMap[value]; ok {
+		return intPty, nil
+	}
+	return 0, fmt.Errorf("%w: %s", ErrInvalidPriority, value)
 }
 
 func validateSummary(value string) (interface{}, error) {

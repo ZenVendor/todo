@@ -52,3 +52,19 @@ func HumanDue(due time.Time, dateFormat string) string {
 	}
 	return result
 }
+
+func DisplayPriority(priority int) string {
+	if priority >= 0 && priority < 10 {
+		return fmt.Sprintf("Critical [%d]", priority)
+	}
+	if priority >= 10 && priority < 100 {
+		return fmt.Sprintf("High [%d]", priority)
+	}
+	if priority >= 100 && priority < 1000 {
+		return fmt.Sprintf("Medium [%d]", priority)
+	}
+	if priority >= 1000 && priority < 10000 {
+		return fmt.Sprintf("Low [%d]", priority)
+	}
+	return fmt.Sprintf("Reminder", priority)
+}

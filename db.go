@@ -43,7 +43,7 @@ func (t *Task) Add(db *sql.DB) (err error) {
 		t.Priority,
 		t.DateDue,
 		t.Description,
-		t.Group.Id,
+		t.Project.Id,
 		parentId,
 	)
 	if err != nil {
@@ -54,16 +54,16 @@ func (t *Task) Add(db *sql.DB) (err error) {
 	return err
 }
 
-func (g *Group) Add(db *sql.DB) (err error) {
+func (p *Project) Add(db *sql.DB) (err error) {
 	result, err := db.Exec(
 		"INSERT INTO Project (project_name) VALUES (?);",
-		g.Name,
+		p.Name,
 	)
 	if err != nil {
 		return err
 	}
 	id, err := result.LastInsertId()
-	g.Id = int(id)
+	p.Id = int(id)
 	return err
 }
 
@@ -97,8 +97,8 @@ func (t *Task) GetTask(db *sql.DB) (err error) {
 		&t.Description,
 		&t.ClosingComment,
 		&t.Status,
-		&t.Group.Id,
-		&t.Group.Name,
+		&t.Project.Id,
+		&t.Project.Name,
 		&parentId,
 		&t.DateCreated,
 		&t.DateUpdated,
@@ -153,8 +153,8 @@ func (t *Task) GetChildren(db *sql.DB) (err error) {
 			&ct.Description,
 			&ct.ClosingComment,
 			&ct.Status,
-			&ct.Group.Id,
-			&ct.Group.Name,
+			&ct.Project.Id,
+			&ct.Project.Name,
 			&ct.Parent.Id,
 			&ct.DateCreated,
 			&ct.DateUpdated,
@@ -168,30 +168,34 @@ func (t *Task) GetChildren(db *sql.DB) (err error) {
 	return err
 }
 
-func (g *Group) GetById(db *sql.DB) (err error) {
+func (p *Project) GetById(db *sql.DB) (err error) {
 	err = db.QueryRow(
 		"SELECT id, project_name FROM Project WHERE id = ?;",
-		g.Id,
-	).Scan(&g.Id, &g.Name)
+		p.Id,
+	).Scan(&p.Id, &p.Name)
 	return err
 }
 
-func (g *Group) GetByName(db *sql.DB) (err error) {
+func (p *Project) GetByName(db *sql.DB) (err error) {
 	err = db.QueryRow(
 		"SELECT id, project_name FROM Project WHERE project_name = ?;",
-		g.Name,
-	).Scan(&g.Id, &g.Name)
+		p.Name,
+	).Scan(&p.Id, &p.Name)
 	return err
 }
 
-func (g *Group) GetGroup(db *sql.DB) (err error) {
-	if g.Name != "" {
-		return g.GetByName(db)
+func (p *Project) GetProject(db *sql.DB) (err error) {
+	if p.Name != "" {
+		return p.GetByName(db)
 	}
-	return g.GetById(db)
+	return p.GetById(db)
 }
 
 func (t Task) Update(db *sql.DB) (err error) {
+    parentId := 0
+    if t.Parent != nil {
+        parentId = t.Parent.Id
+    }
 	query := `
         UPDATE Task SET 
             summary = ?
@@ -215,18 +219,18 @@ func (t Task) Update(db *sql.DB) (err error) {
 		t.Description,
 		t.ClosingComment,
 		t.Status,
-		t.Group.Id,
-		t.Parent.Id,
+		t.Project.Id,
+		parentId,
 		t.Id,
 	)
 	return err
 }
 
-func (g Group) Update(db *sql.DB) (err error) {
+func (p Project) Update(db *sql.DB) (err error) {
 	_, err = db.Exec(
 		"UPDATE Project SET project_name = ?, sys_updated = current_timestamp WHERE id = ?;",
-		g.Name,
-		g.Id,
+		p.Name,
+		p.Id,
 	)
 	return err
 }
@@ -256,10 +260,10 @@ func (t Task) DeleteChildren(db *sql.DB) (rows int, err error) {
 	return int(r), err
 }
 
-func (g Group) Delete(db *sql.DB) (err error) {
+func (p Project) Delete(db *sql.DB) (err error) {
 	_, err = db.Exec(
 		"UPDATE Project SET sys_status = 0, sys_updated = current_timestamp WHERE id = ?;",
-		g.Id,
+		p.Id,
 	)
 	return err
 }
@@ -275,7 +279,7 @@ func ListTasksAll(db *sql.DB) (tl TaskList, err error) {
 	for rows.Next() {
 		var t Task
 
-		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status, &t.Group.Id, &t.Group.Name)
+		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status, &t.Project.Id, &t.Project.Name)
 		if err != nil {
 			return tl, err
 		}
@@ -295,7 +299,7 @@ func ListTasksCompleted(db *sql.DB) (tl TaskList, err error) {
 	for rows.Next() {
 		var t Task
 
-		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status, &t.Group.Id, &t.Group.Name)
+		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status, &t.Project.Id, &t.Project.Name)
 		if err != nil {
 			return tl, err
 		}
@@ -315,7 +319,7 @@ func ListTasksDeleted(db *sql.DB) (tl TaskList, err error) {
 	for rows.Next() {
 		var t Task
 
-		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status, &t.Group.Id, &t.Group.Name)
+		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status, &t.Project.Id, &t.Project.Name)
 		if err != nil {
 			return tl, err
 		}
@@ -325,7 +329,7 @@ func ListTasksDeleted(db *sql.DB) (tl TaskList, err error) {
 	return tl, err
 }
 func ListTasksInProgress(db *sql.DB) (tl TaskList, err error) {
-	query := "SELECT id , summary, priority, date_due, date_completed, status, project_id, project_name FROM task_list_in_progress;"
+	query := "SELECT id , summary, priority, date_due, date_completed, status, project_id, project_name FROM task_list_in_prop.ess;"
 	rows, err := db.Query(query)
 	if err != nil {
 		return tl, err
@@ -335,7 +339,7 @@ func ListTasksInProgress(db *sql.DB) (tl TaskList, err error) {
 	for rows.Next() {
 		var t Task
 
-		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status, &t.Group.Id, &t.Group.Name)
+		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status, &t.Project.Id, &t.Project.Name)
 		if err != nil {
 			return tl, err
 		}
@@ -355,7 +359,7 @@ func ListTasksNew(db *sql.DB) (tl TaskList, err error) {
 	for rows.Next() {
 		var t Task
 
-		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status, &t.Group.Id, &t.Group.Name)
+		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status, &t.Project.Id, &t.Project.Name)
 		if err != nil {
 			return tl, err
 		}
@@ -375,7 +379,7 @@ func ListTasksOnHold(db *sql.DB) (tl TaskList, err error) {
 	for rows.Next() {
 		var t Task
 
-		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status, &t.Group.Id, &t.Group.Name)
+		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status, &t.Project.Id, &t.Project.Name)
 		if err != nil {
 			return tl, err
 		}
@@ -395,7 +399,7 @@ func ListTasksOpen(db *sql.DB) (tl TaskList, err error) {
 	for rows.Next() {
 		var t Task
 
-		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status, &t.Group.Id, &t.Group.Name)
+		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status, &t.Project.Id, &t.Project.Name)
 		if err != nil {
 			return tl, err
 		}
@@ -415,7 +419,7 @@ func ListTasksOverdue(db *sql.DB) (tl TaskList, err error) {
 	for rows.Next() {
 		var t Task
 
-		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status, &t.Group.Id, &t.Group.Name)
+		err = rows.Scan(&t.Id, &t.Summary, &t.Priority, &t.DateDue, &t.DateCompleted, &t.Status, &t.Project.Id, &t.Project.Name)
 		if err != nil {
 			return tl, err
 		}
@@ -430,7 +434,7 @@ func (c *Counts) GetCounts(db *sql.DB) (err error) {
         SELECT 
             count_all
             , count_new
-            , count_in_progress
+            , count_in_prop.ess
             , count_on_hold
             , count_completed
             , count_open
@@ -449,20 +453,20 @@ func (c *Counts) GetCounts(db *sql.DB) (err error) {
 	return err
 }
 
-func GroupCounts(groupId int, db *sql.DB) (c Counts, err error) {
+func ProjectCounts(projectId int, db *sql.DB) (c Counts, err error) {
 	query := `
         SELECT 
             count_all
             , count_new
-            , count_in_progress
+            , count_in_prop.ess
             , count_on_hold
             , count_completed
             , count_open
             , count_overdue
-        FROM group_counts
+        FROM p.oup_counts
         WHERE id = ?;
     `
-	err = db.QueryRow(query, groupId).Scan(
+	err = db.QueryRow(query, projectId).Scan(
 		c.All,
 		c.New,
 		c.InProgress,
@@ -474,20 +478,19 @@ func GroupCounts(groupId int, db *sql.DB) (c Counts, err error) {
 	return c, err
 }
 
-func StatusCounts(statusId, db *sql.DB) (c Counts, err error) {
+func StatusCounts(db *sql.DB) (c Counts, err error) {
 	query := `
         SELECT 
             count_all
             , count_new
-            , count_in_progress
+            , count_in_prop.ess
             , count_on_hold
             , count_completed
             , count_open
             , count_overdue
         FROM status_counts
-        WHERE id = ?;
     `
-	err = db.QueryRow(query, statusId).Scan(
+	err = db.QueryRow(query).Scan(
 		c.All,
 		c.New,
 		c.InProgress,

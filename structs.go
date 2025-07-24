@@ -18,7 +18,7 @@ type Task struct {
 	Description    string
 	ClosingComment string
 	Status         int
-	Group          Group
+	Project        Project
 	Parent         *Task
 	Children       TaskList
 	DateCreated    sql.NullTime
@@ -27,7 +27,7 @@ type Task struct {
 }
 type TaskList []*Task
 
-type Group struct {
+type Project struct {
 	Id   int
 	Name string
 }
@@ -49,7 +49,7 @@ type Verb struct {
 	ValidArgs     []int
 	ValidKwargs   []int
 	MaxArgs       int
-	Call          func(*Parser, *sql.DB, *Config) (string, error)
+	Call          func(*Parser, *sql.DB, *Config) error
 }
 type Verbs []Verb
 
@@ -111,7 +111,7 @@ var verbs = Verbs{
 	Verb{
 		V_LIST,
 		X_NIL,
-		[]int{A_ALL, A_COMPLETED, A_DELETED, A_DUE, A_GROUPS, A_INPROGRESS, A_NEW, A_ONHOLD, A_OPEN, A_OVERDUE},
+		[]int{A_ALL, A_COMPLETED, A_DELETED, A_DUE, A_INPROGRESS, A_NEW, A_ONHOLD, A_OPEN, A_OVERDUE},
 		[]int{},
 		1,
 		(*Parser).List,
