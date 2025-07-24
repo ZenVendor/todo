@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"slices"
 	"strings"
@@ -18,35 +17,13 @@ func (verbs Verbs) GetVerb(verb int) (Verb, error) {
 
 }
 
-func (p *Parser) Print() {
-	fmt.Printf("Verb: %d\n", p.Verb.Verb)
-	fmt.Printf("Args:")
-	for _, s := range p.Args {
-		fmt.Printf(" %d", s)
-	}
-	fmt.Printf("\nKwArgs:\n")
-	for key, value := range p.Kwargs {
-		fmt.Printf("%d: %s\n", key, value)
-	}
-}
-
-func (p *Parser) ToString() string {
-	str := fmt.Sprintf("%d -", p.Verb.Verb)
-	for _, s := range p.Args {
-		str = fmt.Sprintf("%s %d", str, s)
-	}
-	for key, value := range p.Kwargs {
-		str = fmt.Sprintf("%s %d:%v", str, key, value)
-	}
-	return str
-}
-
-func NewParser(defaultVerb int, defaultArgs []int, defaultKwargs map[int]interface{}) (Parser, error) {
+func NewParser(defaultVerb int, defaultArgs []int, defaultKwargs map[int]interface{}, conf *Config) (Parser, error) {
 	var err error
 	var p = Parser{
 		Verb:   Verb{},
 		Args:   make([]int, 0, 2),
 		Kwargs: map[int]interface{}{},
+		Conf:   conf,
 	}
 	p.Verb, err = verbs.GetVerb(defaultVerb)
 	if err != nil {
@@ -89,7 +66,8 @@ func (p *Parser) Parse(args []string) error {
 		if len(args) < 2 {
 			return fmt.Errorf("%w: \"%s\"", ErrVerbRequiresValue, args[0])
 		}
-		verbVal, err := validatorMap[p.Verb.RequiredValue](args[1])
+
+		verbVal, err := validatorMap[p.Verb.RequiredValue](p, args[1])
 		if err != nil {
 			return err
 		}
@@ -121,7 +99,7 @@ func (p *Parser) Parse(args []string) error {
 			if !slices.Contains(p.Verb.ValidKwargs, key) {
 				return fmt.Errorf("%w: %s", ErrInvalidVerbArgument, arg)
 			}
-			val, err := validatorMap[key](value)
+			val, err := validatorMap[key](p, value)
 			if err != nil {
 				return err
 			}
@@ -146,61 +124,4 @@ func (p *Parser) GetArg(index int) int {
 		return X_NIL
 	}
 	return p.Args[index]
-}
-
-func (t *Task) SetOptional(p *Parser, db *sql.DB) (err error) {
-
-	if value, ok := p.Kwargs[K_COMMENT]; ok {
-		t.ClosingComment = value.(string)
-	}
-	if value, ok := p.Kwargs[K_DATEDUE]; ok {
-		t.DateDue = value.(sql.NullTime)
-	}
-	if value, ok := p.Kwargs[K_DESCRIPTION]; ok {
-		t.Description = value.(string)
-	}
-	if value, ok := p.Kwargs[K_PROJECT]; ok {
-		t.Project.Name = value.(string)
-	}
-	if value, ok := p.Kwargs[K_PRIORITY]; ok {
-		t.Priority = value.(int)
-	}
-	if value, ok := p.Kwargs[K_SUMMARY]; ok {
-		t.Summary = value.(string)
-	}
-
-	// If parent is set, get parent task
-	if value, ok := p.Kwargs[K_PARENT]; ok {
-
-		// Unset parent
-		if p.Kwargs[K_PARENT] == 0 {
-			t.Parent = nil
-			return err
-		}
-
-		t.Parent = &Task{}
-		t.Parent.Id = value.(int)
-		if err = t.Parent.GetTask(db); err != nil {
-			return err
-		}
-		// Parent group overrides provided value
-		t.Project.Id = t.Parent.Project.Id
-		t.Project.Name = t.Parent.Project.Name
-
-		// If provided due date is later than parent's, use parent's
-		if t.Parent.DateDue.Valid {
-			if !t.DateDue.Valid {
-				t.DateDue = t.Parent.DateDue
-			}
-			if t.DateDue.Time.After(t.Parent.DateDue.Time) {
-				t.DateDue = t.Parent.DateDue
-			}
-		}
-		// If priority is lower than parent's, use parent's
-		if t.Priority > t.Parent.Priority {
-			t.Priority = t.Parent.Priority
-		}
-	}
-
-	return err
 }

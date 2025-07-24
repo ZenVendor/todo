@@ -8,9 +8,72 @@ import (
 	"strings"
 )
 
-func (p *Parser) Add(db *sql.DB, conf *Config) (err error) {
+func (t *Task) SetOptional(p *Parser, db *sql.DB) (err error) {
+
+	if p.ArgIsPresent(A_COMMENT) {
+		t.ClosingComment, err = GetDescriptionFromEditor(t.ClosingComment)
+		if err != nil {
+			return err
+		}
+	}
+	if p.ArgIsPresent(A_DESCRIPTION) {
+		t.Description, err = GetDescriptionFromEditor(t.Description)
+		if err != nil {
+			return err
+		}
+	}
+	if value, ok := p.Kwargs[K_DATEDUE]; ok {
+		t.DateDue = value.(sql.NullTime)
+	}
+	if value, ok := p.Kwargs[K_PRIORITY]; ok {
+		t.Priority = value.(int)
+	}
+	if value, ok := p.Kwargs[K_PROJECT]; ok {
+		t.Project.Name = value.(string)
+	}
+	if value, ok := p.Kwargs[K_SUMMARY]; ok {
+		t.Summary = value.(string)
+	}
+
+	// If parent is set, get parent task
+	if value, ok := p.Kwargs[K_PARENT]; ok {
+		// Unset parent
+		if p.Kwargs[K_PARENT] == 0 {
+			t.Parent = nil
+			return err
+		}
+		t.Parent = &Task{}
+		t.Parent.Id = value.(int)
+	}
+	if t.Parent != nil && t.Parent.Id > 0 {
+		if err = t.Parent.GetTask(db); err != nil {
+			return err
+		}
+		// Parent project overrides provided value
+		if t.Project.Id != t.Parent.Project.Id {
+			t.Project.Id = t.Parent.Project.Id
+			t.Project.Name = t.Parent.Project.Name
+		}
+		// If provided due date is later than parent's, use parent's
+		if t.Parent.DateDue.Valid {
+			if !t.DateDue.Valid {
+				t.DateDue = t.Parent.DateDue
+			}
+			if t.DateDue.Time.After(t.Parent.DateDue.Time) {
+				t.DateDue = t.Parent.DateDue
+			}
+		}
+		// If priority is lower than parent's, use parent's
+		if t.Priority > t.Parent.Priority {
+			t.Priority = t.Parent.Priority
+		}
+	}
+	return err
+}
+
+func (p *Parser) Add(db *sql.DB) (err error) {
 	// Required: K_SUMMARY
-	// Optional: K_DESCRIPTION, K_DATEDUE, K_GROUP, K_PARENT, K_PRIORITY
+	// Optional: A_DESCRIPTION, K_DATEDUE, K_DESCRIPTION, K_PARENT, K_PROJECT, K_PRIORITY
 
 	var t Task
 
@@ -20,40 +83,8 @@ func (p *Parser) Add(db *sql.DB, conf *Config) (err error) {
 	t.Status = STATUS_NEW
 	t.Project = Project{DEFAULT_GROUP, ""}
 
-	// Optional values
-	if value, ok := p.Kwargs[K_DESCRIPTION]; ok {
-		t.Description = value.(string)
-	}
-	if value, ok := p.Kwargs[K_DATEDUE]; ok {
-		t.DateDue = value.(sql.NullTime)
-	}
-	if value, ok := p.Kwargs[K_PROJECT]; ok {
-		t.Project.Name = value.(string)
-	}
-	if value, ok := p.Kwargs[K_PRIORITY]; ok {
-		t.Priority = value.(int)
-	}
-
-	// If parent is set, get parent task
-	if value, ok := p.Kwargs[K_PARENT]; ok {
-		t.Parent.Id = value.(int)
-		if err = t.Parent.GetTask(db); err != nil {
-			return err
-		}
-		// If provided due date is later than parent's, use parent's
-		if t.Parent.DateDue.Valid && (t.DateDue.Time.After(t.Parent.DateDue.Time) ||
-			!t.DateDue.Valid) {
-			t.DateDue = t.Parent.DateDue
-		}
-
-		// Parent group overrides provided value
-		t.Project.Id = t.Parent.Project.Id
-		t.Project.Name = t.Parent.Project.Name
-
-		// If priority is lower than parent's, use parent's
-		if t.Priority > t.Parent.Priority {
-			t.Priority = t.Parent.Priority
-		}
+	if err = t.SetOptional(p, db); err != nil {
+		return err
 	}
 	if err = t.Project.GetProject(db); err != nil {
 		if err = t.Project.Add(db); err != nil {
@@ -63,14 +94,13 @@ func (p *Parser) Add(db *sql.DB, conf *Config) (err error) {
 	if err = t.Add(db); err != nil {
 		return err
 	}
-
 	fmt.Printf("\t%sAdded task:% d - %s%s\n", C_GREEN, t.Id, t.Summary, C_RESET)
 	return nil
 }
 
-func (p *Parser) Complete(db *sql.DB, conf *Config) (err error) {
+func (p *Parser) Complete(db *sql.DB) (err error) {
 	// Required: K_ID
-	// Optional: K_COMMENT
+	// Optional: A_COMMENT, K_COMMENT
 	var t Task
 	t.Id = p.Kwargs[K_ID].(int)
 	if err = t.GetTask(db); err != nil {
@@ -80,8 +110,8 @@ func (p *Parser) Complete(db *sql.DB, conf *Config) (err error) {
 	t.Status = STATUS_COMPLETED
 	t.DateCompleted = NullNow()
 
-	if value, ok := p.Kwargs[K_COMMENT]; ok {
-		t.ClosingComment = value.(string)
+	if err = t.SetOptional(p, db); err != nil {
+		return err
 	}
 	if err = t.Update(db); err != nil {
 		return err
@@ -113,17 +143,16 @@ func (p *Parser) Complete(db *sql.DB, conf *Config) (err error) {
 			fmt.Fprintf(&bs, "\n\t%d - %s", (*c).Id, (*c).Summary)
 		}
 	}
-
 	fmt.Println(bs.String())
 	return err
 }
 
-func (p *Parser) Count(db *sql.DB, conf *Config) (err error) {
+func (p *Parser) Count(db *sql.DB) (err error) {
 	// Optional: A_ALL, A_COMPLETED, A_DUE, A_INPROGRESS, A_ONHOLD, A_OPEN, A_OVERDUE
 	return err
 }
 
-func (p *Parser) Delete(db *sql.DB, conf *Config) (err error) {
+func (p *Parser) Delete(db *sql.DB) (err error) {
 	// Required: K_ID
 	// Optional: A_ALL
 	var t Task
@@ -170,23 +199,26 @@ func (p *Parser) Delete(db *sql.DB, conf *Config) (err error) {
 	return err
 }
 
-func (p *Parser) Help(db *sql.DB, conf *Config) (err error) {
+func (p *Parser) Help(db *sql.DB) (err error) {
 	fmt.Println(embedHelp)
 	return nil
 }
 
-func (p *Parser) Hold(db *sql.DB, conf *Config) (err error) {
+func (p *Parser) Hold(db *sql.DB) (err error) {
 	// Required: K_ID
+	// Optional: A_DESCRIPTION, K_DESCRIPTION
 	var t Task
 	t.Id = p.Kwargs[K_ID].(int)
 	if err = t.GetTask(db); err != nil {
 		return err
 	}
 	t.Status = STATUS_HOLD
+	if err = t.SetOptional(p, db); err != nil {
+		return err
+	}
 	if err = t.Update(db); err != nil {
 		return err
 	}
-
 	var bs strings.Builder
 	fmt.Fprintf(&bs, "Task put on hold: %d - %s", t.Id, t.Summary)
 
@@ -210,12 +242,11 @@ func (p *Parser) Hold(db *sql.DB, conf *Config) (err error) {
 			fmt.Fprintf(&bs, "\n\t%d - %s", (*c).Id, (*c).Summary)
 		}
 	}
-
 	fmt.Println(bs.String())
 	return err
 }
 
-func (p *Parser) List(db *sql.DB, conf *Config) (err error) {
+func (p *Parser) List(db *sql.DB) (err error) {
 	//	Optional: A_ALL, A_COMPLETED, A_DELETED, A_DUE, A_INPROGRESS, A_NEW, A_ONHOLD, A_OPEN, A_OVERDUE
 	var tl TaskList
 
@@ -272,8 +303,9 @@ func (p *Parser) List(db *sql.DB, conf *Config) (err error) {
 	return err
 }
 
-func (p *Parser) Reopen(db *sql.DB, conf *Config) (err error) {
+func (p *Parser) Reopen(db *sql.DB) (err error) {
 	// Required: K_ID,
+	// Optional: A_DESCRIPTION, K_DESCRIPTION
 	var t Task
 	t.Id = p.Kwargs[K_ID].(int)
 	if err = t.GetTask(db); err != nil {
@@ -282,6 +314,9 @@ func (p *Parser) Reopen(db *sql.DB, conf *Config) (err error) {
 	t.Status = STATUS_INPROG
 	t.DateCompleted.Valid = false
 
+	if err = t.SetOptional(p, db); err != nil {
+		return err
+	}
 	if err = t.Update(db); err != nil {
 		return err
 	}
@@ -316,7 +351,7 @@ func (p *Parser) Reopen(db *sql.DB, conf *Config) (err error) {
 	return err
 }
 
-func (p *Parser) Show(db *sql.DB, conf *Config) (err error) {
+func (p *Parser) Show(db *sql.DB) (err error) {
 	// Required: K_ID,
 	var t Task
 	t.Id = p.Kwargs[K_ID].(int)
@@ -362,68 +397,30 @@ func (p *Parser) Show(db *sql.DB, conf *Config) (err error) {
 	return err
 }
 
-func (p *Parser) Update(db *sql.DB, conf *Config) (err error) {
+func (p *Parser) Update(db *sql.DB) (err error) {
 	// Required: K_ID,
-	//  Optional: K_DATEDUE, K_GROUP, K_DESCRIPTION, K_PRIORITY, K_SUMMARY, K_PARENT
+	// Optional: A_COMMENT, A_DESCRIPTION, K_COMMENT, K_DATEDUE, K_DESCRIPTION, K_PARENT, K_PRIORITY, K_PROJECT K_SUMMARY
 	var t Task
 	t.Id = p.Kwargs[K_ID].(int)
 	if err = t.GetTask(db); err != nil {
 		return err
 	}
-	// Optional values
-	if value, ok := p.Kwargs[K_DATEDUE]; ok {
-		t.DateDue = value.(sql.NullTime)
-	}
-	if value, ok := p.Kwargs[K_DESCRIPTION]; ok {
-		t.Description = value.(string)
-	}
-	if value, ok := p.Kwargs[K_PROJECT]; ok {
-		t.Project.Name = value.(string)
-	}
-	if value, ok := p.Kwargs[K_PRIORITY]; ok {
-		t.Priority = value.(int)
-	}
-	if value, ok := p.Kwargs[K_SUMMARY]; ok {
-		t.Summary = value.(string)
-	}
-	// If parent is set, get parent task
-
-	if value, ok := p.Kwargs[K_PARENT]; ok {
-		t.Parent.Id = value.(int)
-		if value.(int) != 0 {
-			if err = t.Parent.GetTask(db); err != nil {
-				return err
-			}
-			// If provided due date is later than parent's, use parent's
-			if t.Parent.DateDue.Valid && (t.DateDue.Time.After(t.Parent.DateDue.Time) ||
-				!t.DateDue.Valid) {
-				t.DateDue = t.Parent.DateDue
-			}
-			// Parent group overrides provided value
-			t.Project.Id = t.Parent.Project.Id
-			t.Project.Name = t.Parent.Project.Name
-
-			// If priority is lower than parent's, use parent's
-			if t.Priority > t.Parent.Priority {
-				t.Priority = t.Parent.Priority
-			}
-		}
+	if err = t.SetOptional(p, db); err != nil {
+		return err
 	}
 	if err = t.Project.GetProject(db); err != nil {
 		if err = t.Project.Add(db); err != nil {
 			return err
 		}
 	}
-
 	if err = t.Update(db); err != nil {
 		return err
 	}
-
 	fmt.Printf("Task updated: %d - %s", t.Id, t.Summary)
 	return err
 }
 
-func (p *Parser) Version(db *sql.DB, conf *Config) (err error) {
+func (p *Parser) Version(db *sql.DB) (err error) {
 	fmt.Printf("TODO CLI\t::\tversion: %s\n", VERSION_APP)
 	return nil
 }

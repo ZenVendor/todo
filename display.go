@@ -66,5 +66,5 @@ func DisplayPriority(priority int) string {
 	if priority >= 1000 && priority < 10000 {
 		return fmt.Sprintf("Low [%d]", priority)
 	}
-	return fmt.Sprintf("Reminder", priority)
+	return fmt.Sprint("Reminder")
 }

@@ -192,10 +192,10 @@ func (p *Project) GetProject(db *sql.DB) (err error) {
 }
 
 func (t Task) Update(db *sql.DB) (err error) {
-    parentId := 0
-    if t.Parent != nil {
-        parentId = t.Parent.Id
-    }
+	parentId := 0
+	if t.Parent != nil {
+		parentId = t.Parent.Id
+	}
 	query := `
         UPDATE Task SET 
             summary = ?

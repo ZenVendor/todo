@@ -81,7 +81,7 @@ func (conf *Config) Prepare() (db *sql.DB, err error) {
 			if err != nil {
 				return nil, err
 			}
-			err = yaml.Unmarshal(f, &conf)
+			err = yaml.Unmarshal([]byte(f), conf)
 			if err != nil {
 				return nil, err
 			}

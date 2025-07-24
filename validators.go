@@ -9,18 +9,25 @@ import (
 	"time"
 )
 
-func validateInt(value string) (interface{}, error) {
+func (p *Parser) validateInt(value string) (interface{}, error) {
+	if value == "" {
+		return 0, nil
+	}
 	return strconv.Atoi(value)
 }
 
-func validateProject(value string) (interface{}, error) {
+func (p *Parser) validateProject(value string) (interface{}, error) {
 	proj := strings.TrimSpace(value)
-	if len([]rune(proj)) > 24 {
-		return "", fmt.Errorf("%w: %d/24", ErrStringLength, len([]rune(proj)))
+	nameLen := len([]rune(proj))
+	if nameLen > p.Conf.ProjectNameLength {
+		return "", fmt.Errorf("%w: Project: %d/%d", ErrStringLength, nameLen, p.Conf.ProjectNameLength)
 	}
 	return proj, nil
 }
-func validatePriority(value string) (interface{}, error) {
+func (p *Parser) validatePriority(value string) (interface{}, error) {
+	if value == "" {
+		return PRIORITY_NONE, nil
+	}
 	if intPty, err := strconv.Atoi(value); err == nil {
 		return intPty, nil
 	}
@@ -30,19 +37,19 @@ func validatePriority(value string) (interface{}, error) {
 	return 0, fmt.Errorf("%w: %s", ErrInvalidPriority, value)
 }
 
-func validateSummary(value string) (interface{}, error) {
-	short := strings.TrimSpace(value)
-	if len([]byte(short)) > 255 {
-		return "", fmt.Errorf("%w: %d/255", ErrStringLength, len([]byte(short)))
+func (p *Parser) validateSummary(value string) (interface{}, error) {
+	summary := strings.TrimSpace(value)
+	sumLen := len([]rune(summary))
+	if sumLen > p.Conf.SummaryLength {
+		return "", fmt.Errorf("%w: Summary: %d/%d", ErrStringLength, sumLen, p.Conf.SummaryLength)
 	}
-	return short, nil
+	return summary, nil
 }
 
-func validateString(value string) (interface{}, error) {
-	return strings.TrimSpace(value), nil
-}
-
-func validateDate(value string) (interface{}, error) {
+func (p *Parser) validateDate(value string) (interface{}, error) {
+	if value == "" {
+		return sql.NullTime{Time: time.Now(), Valid: false}, nil
+	}
 	re := regexp.MustCompile(`(\d{4})-{0,1}(\d{2})-{0,1}(\d{2})`)
 	result := re.FindAllStringSubmatch(value, -1)
 	if len(result) == 0 {

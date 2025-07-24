@@ -11,7 +11,13 @@ func main() {
 	var db *sql.DB
 	args := os.Args[1:]
 
-	parser, err := NewParser(V_LIST, []int{A_OPEN}, map[int]interface{}{})
+	db, err := conf.Prepare()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	parser, err := NewParser(V_LIST, []int{A_OPEN}, map[int]interface{}{}, &conf)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -19,13 +25,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	db, err = conf.Prepare()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
-	err = parser.Verb.Call(&parser, db, &conf)
+	err = parser.Verb.Call(&parser, db)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -3,10 +3,12 @@ package main
 import "database/sql"
 
 type Config struct {
-	DBLocation     string `yaml:"dblocation"`
-	DBName         string `yaml:"dbname"`
-	DateFormat     string `yaml:"dateformat"`
-	DefaultProject string `yaml:"defaultproject"`
+	DBLocation        string `yaml:"dbLocation"`
+	DBName            string `yaml:"dbName"`
+	DateFormat        string `yaml:"dateFormat"`
+	DefaultProject    string `yaml:"defaultProject"`
+	ProjectNameLength int    `yaml:"projectNameLength"`
+	SummaryLength     int    `yaml:"summaryLength"`
 }
 
 type Task struct {
@@ -49,7 +51,7 @@ type Verb struct {
 	ValidArgs     []int
 	ValidKwargs   []int
 	MaxArgs       int
-	Call          func(*Parser, *sql.DB, *Config) error
+	Call          func(*Parser, *sql.DB) error
 }
 type Verbs []Verb
 
@@ -57,23 +59,24 @@ type Parser struct {
 	Verb   Verb
 	Args   []int
 	Kwargs map[int]interface{}
+	Conf   *Config
 }
 
 var verbs = Verbs{
 	Verb{
 		V_ADD,
 		K_SUMMARY,
-		[]int{},
-		[]int{K_DATEDUE, K_PROJECT, K_DESCRIPTION, K_PRIORITY, K_PARENT},
+		[]int{A_DESCRIPTION},
+		[]int{K_DATEDUE, K_PARENT, K_PRIORITY, K_PROJECT},
 		1,
 		(*Parser).Add,
 	},
 	Verb{
 		V_COMPLETE,
 		K_ID,
+		[]int{A_COMMENT, A_DESCRIPTION},
 		[]int{},
-		[]int{K_COMMENT},
-		0,
+		1,
 		(*Parser).Complete,
 	},
 	Verb{
@@ -103,7 +106,7 @@ var verbs = Verbs{
 	Verb{
 		V_HOLD,
 		K_ID,
-		[]int{},
+		[]int{A_COMMENT, A_DESCRIPTION},
 		[]int{},
 		0,
 		(*Parser).Hold,
@@ -119,7 +122,7 @@ var verbs = Verbs{
 	Verb{
 		V_REOPEN,
 		K_ID,
-		[]int{},
+		[]int{A_COMMENT, A_DESCRIPTION},
 		[]int{},
 		0,
 		(*Parser).Reopen,
@@ -135,8 +138,8 @@ var verbs = Verbs{
 	Verb{
 		V_UPDATE,
 		K_ID,
-		[]int{},
-		[]int{K_DATEDUE, K_PROJECT, K_DESCRIPTION, K_PRIORITY, K_SUMMARY, K_PARENT},
+		[]int{A_COMMENT, A_DESCRIPTION},
+		[]int{K_DATEDUE, K_PARENT, K_PRIORITY, K_SUMMARY},
 		1,
 		(*Parser).Update,
 	},
