@@ -9,6 +9,7 @@ type Config struct {
 	DBName            string `yaml:"dbName"`
 	DateFormat        string `yaml:"dateFormat"`
 	DefaultProject    string `yaml:"defaultProject"`
+    Editor          string `yaml:"editor"`
 }
 
 type Task struct {
@@ -73,7 +74,7 @@ var verbs = Verbs{
 	Verb{
 		V_COMPLETE,
 		K_ID,
-		[]int{A_COMMENT, A_DESCRIPTION},
+		[]int{A_COMMENT},
 		[]int{},
 		1,
 		(*Parser).Complete,
@@ -105,15 +106,15 @@ var verbs = Verbs{
 	Verb{
 		V_HOLD,
 		K_ID,
-		[]int{A_COMMENT, A_DESCRIPTION},
+		[]int{A_DESCRIPTION},
 		[]int{},
-		0,
+		1,
 		(*Parser).Hold,
 	},
 	Verb{
 		V_LIST,
 		X_NIL,
-		[]int{A_COMPLETED, A_DELETED, A_DUE, A_INPROGRESS, A_NEW, A_ONHOLD, A_OPEN, A_OVERDUE},
+		[]int{A_COMPLETED, A_DELETED, A_INPROGRESS, A_NEW, A_ONHOLD, A_OPEN, A_OVERDUE},
 		[]int{},
 		1,
 		(*Parser).List,
@@ -121,9 +122,9 @@ var verbs = Verbs{
 	Verb{
 		V_REOPEN,
 		K_ID,
-		[]int{A_COMMENT, A_DESCRIPTION},
+		[]int{A_DESCRIPTION},
 		[]int{},
-		0,
+		1,
 		(*Parser).Reopen,
 	},
 	Verb{
@@ -135,12 +136,28 @@ var verbs = Verbs{
 		(*Parser).Show,
 	},
 	Verb{
+		V_START,
+		K_ID,
+		[]int{A_DESCRIPTION},
+		[]int{},
+		1,
+		(*Parser).Start,
+	},
+	Verb{
 		V_UPDATE,
 		K_ID,
 		[]int{A_COMMENT, A_DESCRIPTION},
 		[]int{K_DATEDUE, K_PARENT, K_PRIORITY, K_SUMMARY},
 		1,
 		(*Parser).Update,
+	},
+	Verb{
+		V_UNDELETE,
+		K_ID,
+		[]int{},
+		[]int{},
+		0,
+		(*Parser).Undelete,
 	},
 	Verb{
 		V_VERSION,

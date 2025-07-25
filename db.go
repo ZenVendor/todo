@@ -243,6 +243,15 @@ func (t Task) Delete(db *sql.DB) (err error) {
 	)
 	return err
 }
+
+func (t Task) Undelete(db *sql.DB) (err error) {
+	_, err = db.Exec(
+		"UPDATE Task SET sys_status = 1, sys_updated = current_timestamp WHERE id = ?;",
+		t.Id,
+	)
+	return err
+}
+
 func (t Task) DeleteChildren(db *sql.DB) (rows int, err error) {
 	result, err := db.Exec(`
 		UPDATE Task 

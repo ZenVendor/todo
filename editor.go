@@ -5,7 +5,7 @@ import (
 	"os/exec"
 )
 
-func GetDescriptionFromEditor(current string) (desc string, err error) {
+func (c *Config) GetTextFromEditor(current string) (desc string, err error) {
 	tempFile, err := os.CreateTemp("", "input*.txt")
 	if err != nil {
 		return current, err
@@ -17,11 +17,7 @@ func GetDescriptionFromEditor(current string) (desc string, err error) {
 		tempFile.Sync()
 	}
 
-	editor := os.Getenv("EDITOR")
-	if editor == "" {
-		editor = "nano"
-	}
-
+	editor := c.Editor
 	cmd := exec.Command(editor, tempFile.Name())
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout

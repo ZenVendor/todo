@@ -67,7 +67,6 @@ func (c *Config) validateDate(value string) (interface{}, error) {
 }
 
 func parseDuration(oldDate time.Time, dur string) (newDate time.Time, err error) {
-
 	re := regexp.MustCompile(`([+-]{0,1})(\d{0,3})([dwmy]{0,1})`)
 	result := re.FindAllStringSubmatch(dur, -1)
 	if len(result) == 0 {

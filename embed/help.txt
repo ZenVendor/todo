@@ -1,84 +1,85 @@
 
 Usage: 
-    todo [command] [required-argument] [option] [argument]
+    todo [command] [required-argument] [--argument --key=value ...]
 
 Without arguments the command defaults to listing open tasks.
 
 Commands:
     
-    help | h                                    Display this help.
+    add <summary>               Adds new task
+        --description, --desc
+        --due                   [=date]
+        --project, --proj       [=project_name]
+        --priority, --pty       [=number|keyword]
+        --parent, --pid         [=task_id]
 
-    version | v                                 Display program version.
+    complete <task_id>          Sets task completed, including child tasks
+        --comment
 
-    count                                       Display task count. 
-                                                A switch is optional.
+    count                       Displays count for selected status, useful 
+                                for prompt, except --all which is default 
+                                and displays list of statuses
+        --all
+        --completed
+        --deleted
+        --inprog
+        --new
+        --onhold
+        --open
+        --overdue
 
-        --all           | -a
-        --completed     | -c
-        --due           | -d
-        --inprogress    | -ip
-        --onhold        | -h
-        --open          | -o                        default
-        --overdue       | -od 
+    delete <task_id>            Soft deletes task and unlinks child tasks,
+                                or also deletes them with --all
+        --all
 
-    list | l                                    List tasks or groups. 
-                                                A switch is optional.
+    help                        Displays help
 
-        --all           | -a
-        --completed     | -c
-        --deleted       
-        --due           | -d
-        --inprogress    | -ip
-        --onhold        | -h
-        --open          | -o                        default
-        --overdue       | -od 
+    hold                        Puts task on hold
+        --description, --desc
+
+    list                        Lists tasks, defaults to --open            
+        --completed
+        --deleted
+        --inprog
+        --new
+        --onhold
+        --open
+        --overdue
+
+    reopen <task_id>            For completed tasks - switches to New 
+                                status and appends closing comment to
+                                description
+        --description
+
+    show <task_id>              Displays task details
         
-    add | a <summary>                           Add a new task. 
-                                                Summary is required (max 255 characters).
-                                                Additional arguments are optional.
+    start <task_id>             Switches status to In progress
+        --description
 
-        --description           <text>
-        --due [date]    | -d    <date>              yyyymmdd or yyyy-mm-dd
-        --group         | -g    <text>              max 24 characters
-        --parent                <task_id>
-        --priority      | -p    <number>            default 500
+    update <task_id>            Updates task
+        --comment
+        --description, --desc
+        --due                   [=date]
+        --project, --proj       [=project_name]
+        --priority, --pty       [=number|keyword]
+        --parent, --pid         [=task_id]
+        --summary, --sum        [=summary]
 
-    show | s <task_id>                          Display task details.
+    start <task_id>             Undeletes task
 
-    update | u <task_id>                        Update task. 
-                                                At least one argument is required.
-
-        --description           <text>
-        --due           | -d    <date>              yyyymmdd or yyyy-mm-dd
-        --group         | -g    <text>              max 24 characters
-        --parent                <task_id>
-        --priority      | -p    <number>            default 500
-        --summary       | -s    <text>              max 255 characters
-                                                
-    delete | del <task_id>                      Delete task.
-
-    complete | c <task_id>                      Set task completed.
-                                                Optional closing comment can be added.
-
-        --comment       | -d    <text>              
-
-    reopen | open <task_id>                     Reopen completed task.
-
-    configure                                   Add default config and database, if they don't exist.
-        --local                                     do it in current directory (for testing)
-        --reset                                     remove existing config and database, if they exist
+    version                     Displays version
 
 
 Examples:
-    todo
-    todo a "New task"
-    todo add "New task" --due=2024-08-13 -pty=3
-    todo list --all
-    todo l -o
-    todo count -c
-    todo update 15 --priority=1 --group="Project"
-    todo u 10 --due=
-    todo c 12
-    todo reopen 3
-    todo del 5
 
+    todo
+    todo add "New task" --parent=1
+    todo add "New task" --due=2024-08-13 --proj=Todo --priority=low
+    todo list --overdue
+    todo count --all
+    todo update 15 --summary="new summary" 
+    todo start 5 --description
+    todo update 10 --due= 
+    todo complete 12
+    todo reopen 3
+    todo delete 5

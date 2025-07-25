@@ -39,9 +39,7 @@ var testCases = []struct {
 	{[]string{"r", "12"}, Parser{verbs[7], []int{}, map[int]interface{}{K_ID: 12}, &conf}, nil},
 	{[]string{"reopen", "--due"}, Parser{verbs[7], []int{}, map[int]interface{}{}, &conf}, ErrInvalidArgument},
 	{[]string{"list"}, Parser{verbs[6], []int{}, map[int]interface{}{}, &conf}, ErrVerbRequiresArgument},
-	{[]string{"l", "--due"}, Parser{verbs[6], []int{A_DUE}, map[int]interface{}{}, &conf}, nil},
 	{[]string{"l", "--reset"}, Parser{verbs[6], []int{}, map[int]interface{}{}, &conf}, ErrInvalidArgument},
-	{[]string{"list", "-d", "-o"}, Parser{verbs[6], []int{A_DUE}, map[int]interface{}{}, &conf}, ErrTooManyArguments},
 }
 
 func TestParse(t *testing.T) {
