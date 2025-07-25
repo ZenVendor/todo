@@ -51,7 +51,8 @@ var argMap = map[string]int{
 	"--comment":     A_COMMENT,
 	"--completed":   A_COMPLETED,
 	"-c":            A_COMPLETED,
-	"-deleted":      A_DELETED,
+	"--deleted":     A_DELETED,
+	"--del":         A_DELETED,
 	"--description": A_DESCRIPTION,
 	"--desc":        A_DESCRIPTION,
 	"--due":         A_DUE,
@@ -70,7 +71,6 @@ var argMap = map[string]int{
 var kwargMap = map[string]int{
 	"--due":      K_DATEDUE,
 	"-d":         K_DATEDUE,
-	"--id":       K_ID,
 	"--parent":   K_PARENT,
 	"--priority": K_PRIORITY,
 	"--pty":      K_PRIORITY,
@@ -80,11 +80,11 @@ var kwargMap = map[string]int{
 	"--summary":  K_SUMMARY,
 	"-s":         K_SUMMARY,
 }
-var validatorMap = map[int]func(*Parser, string) (interface{}, error){
-	K_DATEDUE:  (*Parser).validateDate,
-	K_ID:       (*Parser).validateInt,
-	K_PARENT:   (*Parser).validateInt,
-	K_PRIORITY: (*Parser).validatePriority,
-	K_PROJECT:  (*Parser).validateProject,
-	K_SUMMARY:  (*Parser).validateSummary,
+var validatorMap = map[int]func(*Config, string) (interface{}, error){
+	K_DATEDUE:  (*Config).validateDate,
+	K_ID:       (*Config).validateInt,
+	K_PARENT:   (*Config).validateInt,
+	K_PRIORITY: (*Config).validatePriority,
+	K_PROJECT:  (*Config).validateProject,
+	K_SUMMARY:  (*Config).validateSummary,
 }

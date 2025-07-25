@@ -18,9 +18,7 @@ select
     , t.sys_status
 from
     Task t
-    inner join Project p on p.id = t.project_id
-where 1=1
-    and t.sys_status = 1;
+    inner join Project p on p.id = t.project_id;
 
 -- new
 drop view if exists task_list_new;

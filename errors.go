@@ -13,6 +13,7 @@ var (
 	ErrInvalidDefaultArg    = errors.New("Parser: Verb does not support the default argument")
 	ErrInvalidDefaultKwarg  = errors.New("Parser: Verb does not support the default keyword argument")
 	ErrInvalidDate          = errors.New("Validator: Invalid date value")
+	ErrInvalidDuration      = errors.New("Validator: Invalid duration value")
 	ErrStringLength         = errors.New("Validator: String value is too long")
 	ErrInvalidPriority      = errors.New("Validator: Invalid priority value")
 	ErrDBVersion            = errors.New("DB Check: Database requires an update!")

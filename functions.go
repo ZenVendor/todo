@@ -72,9 +72,6 @@ func (t *Task) SetOptional(p *Parser, db *sql.DB) (err error) {
 }
 
 func (p *Parser) Add(db *sql.DB) (err error) {
-	// Required: K_SUMMARY
-	// Optional: A_DESCRIPTION, K_DATEDUE, K_DESCRIPTION, K_PARENT, K_PROJECT, K_PRIORITY
-
 	var t Task
 
 	// Set required summary and defaults
@@ -94,13 +91,11 @@ func (p *Parser) Add(db *sql.DB) (err error) {
 	if err = t.Add(db); err != nil {
 		return err
 	}
-	fmt.Printf("\t%sAdded task:% d - %s%s\n", C_GREEN, t.Id, t.Summary, C_RESET)
+	fmt.Printf("Added task: %d - %s\n", t.Id, t.Summary)
 	return nil
 }
 
 func (p *Parser) Complete(db *sql.DB) (err error) {
-	// Required: K_ID
-	// Optional: A_COMMENT, K_COMMENT
 	var t Task
 	t.Id = p.Kwargs[K_ID].(int)
 	if err = t.GetTask(db); err != nil {
@@ -143,18 +138,55 @@ func (p *Parser) Complete(db *sql.DB) (err error) {
 			fmt.Fprintf(&bs, "\n\t%d - %s", (*c).Id, (*c).Summary)
 		}
 	}
+	fmt.Fprint(&bs, "\n")
 	fmt.Println(bs.String())
 	return err
 }
 
 func (p *Parser) Count(db *sql.DB) (err error) {
-	// Optional: A_ALL, A_COMPLETED, A_DUE, A_INPROGRESS, A_ONHOLD, A_OPEN, A_OVERDUE
+	var c Counts
+	if err := c.GetCounts(db); err != nil {
+		return err
+	}
+	var sw int
+	if len(p.Args) == 0 {
+		sw = A_ALL
+	} else {
+		sw = p.Args[0]
+	}
+
+	// parser ensures only one argument is present
+	switch sw {
+	default:
+		w := tabwriter.NewWriter(os.Stdout, 4, 0, 2, ' ', 0)
+		fmt.Fprintf(w, "%sStatus:\tCount%s\n", C_BOLD, C_RESET)
+		fmt.Fprintf(w, "All:\t%d\n", c.All)
+		fmt.Fprintf(w, "Open:\t%d\n", c.Open)
+		fmt.Fprintf(w, "Overdue:\t%d\n", c.Overdue)
+		fmt.Fprintf(w, "New:\t%d\n", c.New)
+		fmt.Fprintf(w, "In progress:\t%d\n", c.InProgress)
+		fmt.Fprintf(w, "On hold:\t%d\n", c.OnHold)
+		fmt.Fprintf(w, "Completed:\t%d\n", c.Completed)
+		w.Flush()
+	// Others are for prompt
+	case A_COMPLETED:
+		fmt.Printf("%d", c.Completed)
+	case A_INPROGRESS:
+		fmt.Printf("%d", c.InProgress)
+	case A_NEW:
+		fmt.Printf("%d", c.New)
+	case A_ONHOLD:
+		fmt.Printf("%d", c.OnHold)
+	case A_OPEN:
+		fmt.Printf("%d", c.Open)
+	case A_OVERDUE:
+		fmt.Printf("%d", c.Overdue)
+
+	}
 	return err
 }
 
 func (p *Parser) Delete(db *sql.DB) (err error) {
-	// Required: K_ID
-	// Optional: A_ALL
 	var t Task
 
 	t.Id = p.Kwargs[K_ID].(int)
@@ -195,6 +227,7 @@ func (p *Parser) Delete(db *sql.DB) (err error) {
 			}
 		}
 	}
+	fmt.Fprint(&bs, "\n")
 	fmt.Println(bs.String())
 	return err
 }
@@ -205,8 +238,6 @@ func (p *Parser) Help(db *sql.DB) (err error) {
 }
 
 func (p *Parser) Hold(db *sql.DB) (err error) {
-	// Required: K_ID
-	// Optional: A_DESCRIPTION, K_DESCRIPTION
 	var t Task
 	t.Id = p.Kwargs[K_ID].(int)
 	if err = t.GetTask(db); err != nil {
@@ -242,45 +273,25 @@ func (p *Parser) Hold(db *sql.DB) (err error) {
 			fmt.Fprintf(&bs, "\n\t%d - %s", (*c).Id, (*c).Summary)
 		}
 	}
+	fmt.Fprint(&bs, "\n")
 	fmt.Println(bs.String())
 	return err
 }
 
 func (p *Parser) List(db *sql.DB) (err error) {
-	//	Optional: A_ALL, A_COMPLETED, A_DELETED, A_DUE, A_INPROGRESS, A_NEW, A_ONHOLD, A_OPEN, A_OVERDUE
-	var tl TaskList
-
-	switch (*p).Args[0] {
-	case A_ALL:
-		tl, err = ListTasksAll(db)
-	case A_COMPLETED:
-		tl, err = ListTasksCompleted(db)
-	case A_DELETED:
-		tl, err = ListTasksDeleted(db)
-	case A_INPROGRESS:
-		tl, err = ListTasksInProgress(db)
-	case A_NEW:
-		tl, err = ListTasksNew(db)
-	case A_ONHOLD:
-		tl, err = ListTasksOnHold(db)
-	case A_OPEN, A_DUE:
-		tl, err = ListTasksOpen(db)
-	case A_OVERDUE:
-		tl, err = ListTasksOverdue(db)
-	}
+	tl, err := ListTasks(db, p.Args[0])
 	if err != nil {
 		return err
 	}
 	w := tabwriter.NewWriter(os.Stdout, 4, 0, 2, ' ', 0)
 	switch (*p).Args[0] {
-	case A_ALL, A_DELETED:
-		fmt.Fprintf(w, "%s\tID\tProject\tStatus\tPriority\tDate Due\tDate Completed\tSummary%s\n", C_BOLD, C_RESET)
+	case A_DELETED:
+		fmt.Fprintf(w, "%sID\tProject\tStatus\tPriority\tDue\tCompleted\tSummary%s\n", C_BOLD, C_RESET)
 	case A_COMPLETED:
-		fmt.Fprintf(w, "%s\tID\tProject\tStatus\tDate Completed\tSummary%s\n", C_BOLD, C_RESET)
+		fmt.Fprintf(w, "%sID\tProject\tStatus\tCompleted\tSummary%s\n", C_BOLD, C_RESET)
 	default:
-		fmt.Fprintf(w, "%s\tID\tProject\tStatus\tPriority\tDate Due\tSummary%s\n", C_BOLD, C_RESET)
+		fmt.Fprintf(w, "%sID\tProject\tStatus\tPriority\tDue\tSummary%s\n", C_BOLD, C_RESET)
 	}
-
 	for _, t := range tl {
 		tDue := HumanDue(t.DateDue.Time, "2006-01-02")
 		if !t.DateDue.Valid {
@@ -291,12 +302,12 @@ func (p *Parser) List(db *sql.DB) (err error) {
 			tCompleted = ""
 		}
 		switch (*p).Args[0] {
-		case A_ALL, A_DELETED:
-			fmt.Fprintf(w, "\t%d\t%s\t%s\t%s\t%s\t%s\t%s\n", t.Id, t.Project.Name, statusMap[t.Status], DisplayPriority(t.Priority), tDue, tCompleted, t.Summary)
+		case A_DELETED:
+			fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\t%s\t%s\n", t.Id, t.Project.Name, statusMap[t.Status], DisplayPriority(t.Priority), tDue, tCompleted, t.Summary)
 		case A_COMPLETED:
-			fmt.Fprintf(w, "\t%d\t%s\t%s\t%s\t%s\n", t.Id, t.Project.Name, statusMap[t.Status], tCompleted, t.Summary)
+			fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\n", t.Id, t.Project.Name, statusMap[t.Status], tCompleted, t.Summary)
 		default:
-			fmt.Fprintf(w, "\t%d\t%s\t%s\t%s\t%s\t%s\n", t.Id, t.Project.Name, statusMap[t.Status], DisplayPriority(t.Priority), tDue, t.Summary)
+			fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\t%s\n", t.Id, t.Project.Name, statusMap[t.Status], DisplayPriority(t.Priority), tDue, t.Summary)
 		}
 	}
 	w.Flush()
@@ -304,8 +315,6 @@ func (p *Parser) List(db *sql.DB) (err error) {
 }
 
 func (p *Parser) Reopen(db *sql.DB) (err error) {
-	// Required: K_ID,
-	// Optional: A_DESCRIPTION, K_DESCRIPTION
 	var t Task
 	t.Id = p.Kwargs[K_ID].(int)
 	if err = t.GetTask(db); err != nil {
@@ -352,7 +361,6 @@ func (p *Parser) Reopen(db *sql.DB) (err error) {
 }
 
 func (p *Parser) Show(db *sql.DB) (err error) {
-	// Required: K_ID,
 	var t Task
 	t.Id = p.Kwargs[K_ID].(int)
 	if err = t.GetTask(db); err != nil {
@@ -361,45 +369,49 @@ func (p *Parser) Show(db *sql.DB) (err error) {
 	if err = t.GetChildren(db); err != nil {
 		return err
 	}
-	var bs strings.Builder
-	fmt.Fprintf(&bs, "%sTASK %d%s\n", C_BOLD, t.Id, C_RESET)
+	del := ""
 	if t.SysStatus == SYS_DELETED {
-		fmt.Fprintf(&bs, "\t%s%sDELETED%s\n", C_RED, C_BOLD, C_RESET)
+		del = fmt.Sprintf("\t%sDELETED%s", C_RED, C_RESET)
 	}
-	fmt.Fprintf(&bs, "\tSummary:\t%s\n", t.Summary)
-	fmt.Fprintf(&bs, "\tPriority:\t%s\n", DisplayPriority(t.Priority))
-	fmt.Fprintf(&bs, "\tProject\t\t%s\n", t.Project.Name)
-	fmt.Fprintf(&bs, "\tStatus:\t\t%s\n", statusMap[t.Status])
+	fmt.Printf("\n%sTASK %d%s%s\n", C_BOLD, t.Id, del, C_RESET)
+
+	w := tabwriter.NewWriter(os.Stdout, 4, 0, 2, ' ', 0)
+	fmt.Fprintf(w, "Summary:\t%s\n", t.Summary)
+	fmt.Fprintf(w, "Project\t%s\n", t.Project.Name)
+	fmt.Fprintf(w, "Priority:\t%s\n", DisplayPriority(t.Priority))
+	fmt.Fprintf(w, "Status:\t%s\n", statusMap[t.Status])
 	if t.DateDue.Valid {
-		fmt.Fprintf(&bs, "\tDue Date:\t%s\n", t.DateDue.Time.Format("2006-01-02"))
+		fmt.Fprintf(w, "\tDue Date:\t%s\n", t.DateDue.Time.Format("2006-01-02"))
 	}
 	if t.Description != "" {
-		fmt.Fprintf(&bs, "\tDescription:\t%s\n", t.Description)
+		fmt.Fprintf(w, "\n%sDescription:\t%s\n", C_BOLD, C_RESET)
+		fmt.Fprint(w, "---------\n")
+		fmt.Fprintf(w, "%v", t.Description)
+		fmt.Fprint(w, "---------\n\n")
 	}
 	if t.Status == STATUS_COMPLETED {
-		fmt.Fprintf(&bs, "\tCompleted:\t %s\n", t.DateCompleted.Time.Format("2006-01-02"))
-		fmt.Fprintf(&bs, "\tComment:\t%s\n", t.ClosingComment)
+		fmt.Fprintf(w, "Completed:\t%s\n", t.DateCompleted.Time.Format("2006-01-02"))
+		fmt.Fprintf(w, "Comment:\t%s\n", t.ClosingComment)
 	}
 	if t.Parent != nil {
-		fmt.Fprintf(&bs, "\tParent: %d - %s\n", t.Parent.Id, t.Parent.Summary)
+		fmt.Fprintf(w, "%sParent:%s\t%d - %s\n", C_BOLD, C_RESET, t.Parent.Id, t.Parent.Summary)
 	}
 	if len(t.Children) > 0 {
-		fmt.Fprintf(&bs, "Linked tasks:\n")
+		fmt.Fprintf(w, "Linked tasks:\n")
 		for _, c := range t.Children {
-			fmt.Fprintf(&bs, " - %d: %s\n", (*c).Id, (*c).Summary)
+			fmt.Fprintf(w, "\t%d: %s\n", (*c).Id, (*c).Summary)
 		}
 	}
-	fmt.Fprintf(&bs, "\n")
-	fmt.Fprintf(&bs, "\tCreated:\t %s\n", t.DateCreated.Time.Format("2006-01-02 15:04:05"))
-	fmt.Fprintf(&bs, "\tUpdated:\t %s\n", t.DateUpdated.Time.Format("2006-01-02 15:04:05"))
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "Created:\t%s\n", t.DateCreated.Time.Format("2006-01-02 15:04:05"))
+	fmt.Fprintf(w, "Updated:\t%s\n", t.DateUpdated.Time.Format("2006-01-02 15:04:05"))
+	fmt.Fprintf(w, "\n")
 
-	fmt.Println(bs.String())
+	err = w.Flush()
 	return err
 }
 
 func (p *Parser) Update(db *sql.DB) (err error) {
-	// Required: K_ID,
-	// Optional: A_COMMENT, A_DESCRIPTION, K_COMMENT, K_DATEDUE, K_DESCRIPTION, K_PARENT, K_PRIORITY, K_PROJECT K_SUMMARY
 	var t Task
 	t.Id = p.Kwargs[K_ID].(int)
 	if err = t.GetTask(db); err != nil {
@@ -416,11 +428,11 @@ func (p *Parser) Update(db *sql.DB) (err error) {
 	if err = t.Update(db); err != nil {
 		return err
 	}
-	fmt.Printf("Task updated: %d - %s", t.Id, t.Summary)
+	fmt.Printf("Task updated: %d - %s\n", t.Id, t.Summary)
 	return err
 }
 
 func (p *Parser) Version(db *sql.DB) (err error) {
-	fmt.Printf("TODO CLI\t::\tversion: %s\n", VERSION_APP)
+	fmt.Printf("TODO CLI :: version: %s\n", VERSION_APP)
 	return nil
 }

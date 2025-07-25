@@ -67,7 +67,7 @@ func (p *Parser) Parse(args []string) error {
 			return fmt.Errorf("%w: \"%s\"", ErrVerbRequiresValue, args[0])
 		}
 
-		verbVal, err := validatorMap[p.Verb.RequiredValue](p, args[1])
+		verbVal, err := validatorMap[p.Verb.RequiredValue](p.Conf, args[1])
 		if err != nil {
 			return err
 		}
@@ -99,7 +99,7 @@ func (p *Parser) Parse(args []string) error {
 			if !slices.Contains(p.Verb.ValidKwargs, key) {
 				return fmt.Errorf("%w: %s", ErrInvalidVerbArgument, arg)
 			}
-			val, err := validatorMap[key](p, value)
+			val, err := validatorMap[key](p.Conf, value)
 			if err != nil {
 				return err
 			}
