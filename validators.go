@@ -48,8 +48,33 @@ func (c *Config) validateSummary(value string) (interface{}, error) {
 
 func (c *Config) validateDate(value string) (interface{}, error) {
 	if value == "" {
-		return sql.NullTime{Time: time.Now(), Valid: false}, nil
+		return value, nil
 	}
+	if _, err := parseDate(value); err == nil {
+		return value, nil
+	}
+	if _, err := parseDuration(sql.NullTime{Time: time.Now(), Valid: true}, value); err == nil {
+		return value, nil
+	}
+	return "", ErrInvalidDate
+}
+
+func (t *Task) setDueDate(value string) {
+	if value == "" {
+		t.DateDue = sql.NullTime{Time: time.Now(), Valid: false}
+		return
+	}
+	if date, err := parseDate(value); err == nil {
+		t.DateDue = date
+		return
+	}
+	if date, err := parseDuration(t.DateDue, value); err == nil {
+		t.DateDue = date
+		return
+	}
+}
+
+func parseDate(value string) (sql.NullTime, error) {
 	re := regexp.MustCompile(`(\d{4})-{0,1}(\d{2})-{0,1}(\d{2})`)
 	result := re.FindAllStringSubmatch(value, -1)
 	if len(result) == 0 {
@@ -66,14 +91,16 @@ func (c *Config) validateDate(value string) (interface{}, error) {
 	return sql.NullTime{Time: date, Valid: true}, err
 }
 
-func parseDuration(oldDate time.Time, dur string) (newDate time.Time, err error) {
+func parseDuration(oldDate sql.NullTime, dur string) (newDate sql.NullTime, err error) {
 	re := regexp.MustCompile(`([+-]{0,1})(\d{0,3})([dwmy]{0,1})`)
 	result := re.FindAllStringSubmatch(dur, -1)
 	if len(result) == 0 {
-		return newDate, fmt.Errorf("%w: %s", ErrInvalidDuration, dur)
+		err := fmt.Errorf("%w: %s", ErrInvalidDuration, dur)
+		return sql.NullTime{Time: time.Now(), Valid: false}, err
 	}
 	if len(result) > 1 {
-		return newDate, fmt.Errorf("%w: %s", ErrInvalidDuration, dur)
+		err := fmt.Errorf("%w: %s", ErrInvalidDuration, dur)
+		return sql.NullTime{Time: time.Now(), Valid: false}, err
 	}
 	vals := result[0][1:]
 	plus := true
@@ -102,6 +129,13 @@ func parseDuration(oldDate time.Time, dur string) (newDate time.Time, err error)
 	case "y":
 		years = num
 	}
-	newDate = oldDate.AddDate(years, months, days)
+	date := oldDate.Time
+	if !oldDate.Valid {
+		date = time.Now()
+	}
+	newDate = sql.NullTime{
+		Time:  date.AddDate(years, months, days),
+		Valid: true,
+	}
 	return newDate, nil
 }

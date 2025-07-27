@@ -23,7 +23,7 @@ func (t *Task) SetOptional(p *Parser, db *sql.DB) (err error) {
 		}
 	}
 	if value, ok := p.Kwargs[K_DATEDUE]; ok {
-		t.DateDue = value.(sql.NullTime)
+		t.setDueDate(value.(string))
 	}
 	if value, ok := p.Kwargs[K_PRIORITY]; ok {
 		t.Priority = value.(int)
@@ -76,7 +76,7 @@ func (p *Parser) Add(db *sql.DB) (err error) {
 
 	// Set required summary and defaults
 	t.Summary = p.Kwargs[K_SUMMARY].(string)
-	t.Priority = PRIORITY_MED
+	t.Priority = PRIORITY_NONE
 	t.Status = STATUS_NEW
 	t.Project = Project{DEFAULT_GROUP, ""}
 
@@ -111,31 +111,31 @@ func (p *Parser) Complete(db *sql.DB) (err error) {
 	if err = t.Update(db); err != nil {
 		return err
 	}
-    fmt.Printf("Completed task: %d - %s\n", t.Id, t.Summary)
-    
+	fmt.Printf("Completed task: %d - %s\n", t.Id, t.Summary)
+
 	// Close subtasks
 	if err = t.GetChildren(db); err != nil {
 		return err
 	}
 	if len(t.Children) == 0 {
-        return err
-    }
-    plural := ""
-    if len(t.Children) > 1 {
-        plural = "s"
-    }
-    var bs strings.Builder
-    fmt.Fprintf(&bs, "and %d subtask%s:", len(t.Children), plural)
-    for _, c := range t.Children {
-        (*c).Status = STATUS_COMPLETED
-        (*c).DateCompleted = NullNow()
-        (*c).ClosingComment = "Closed by main task."
+		return err
+	}
+	plural := ""
+	if len(t.Children) > 1 {
+		plural = "s"
+	}
+	var bs strings.Builder
+	fmt.Fprintf(&bs, "and %d subtask%s:", len(t.Children), plural)
+	for _, c := range t.Children {
+		(*c).Status = STATUS_COMPLETED
+		(*c).DateCompleted = NullNow()
+		(*c).ClosingComment = "Closed by main task."
 
-        if err = (*c).Update(db); err != nil {
-            return err
-        }
-        fmt.Fprintf(&bs, "\t%d - %s\n", (*c).Id, (*c).Summary)
-    }
+		if err = (*c).Update(db); err != nil {
+			return err
+		}
+		fmt.Fprintf(&bs, "\t%d - %s\n", (*c).Id, (*c).Summary)
+	}
 	fmt.Println(bs.String())
 	return err
 }
@@ -193,37 +193,37 @@ func (p *Parser) Delete(db *sql.DB) (err error) {
 	if err = t.Delete(db); err != nil {
 		return err
 	}
-    fmt.Printf("Deleted task: %d - %s\n", t.Id, t.Summary)
+	fmt.Printf("Deleted task: %d - %s\n", t.Id, t.Summary)
 
 	// Unlink or delete subtasks
 	if err = t.GetChildren(db); err != nil {
 		return err
 	}
 	if len(t.Children) == 0 {
-        return err
-    }
-    plural := ""
-    if len(t.Children) > 1 {
-        plural = "s"
-    }
-    var bs strings.Builder
-    if p.ArgIsPresent(A_ALL) {
-        fmt.Fprintf(&bs, "and %d subtask%s:\n", len(t.Children), plural)
-        for _, c := range t.Children {
-            if err = (*c).Delete(db); err != nil {
-                return err
-            }
-            fmt.Fprintf(&bs, "\t%d - %s\n", (*c).Id, (*c).Summary)
-        }
-    } else {
-        fmt.Fprintf(&bs, "and unlinked %d subtask%s:\n", len(t.Children), plural)
-        for _, c := range t.Children {
-            (*c).Parent.Id = 0
-            if err = (*c).Update(db); err != nil {
-                return err
-            }
-            fmt.Fprintf(&bs, "\t%d - %s\n", (*c).Id, (*c).Summary)
-        }
+		return err
+	}
+	plural := ""
+	if len(t.Children) > 1 {
+		plural = "s"
+	}
+	var bs strings.Builder
+	if p.ArgIsPresent(A_ALL) {
+		fmt.Fprintf(&bs, "and %d subtask%s:\n", len(t.Children), plural)
+		for _, c := range t.Children {
+			if err = (*c).Delete(db); err != nil {
+				return err
+			}
+			fmt.Fprintf(&bs, "\t%d - %s\n", (*c).Id, (*c).Summary)
+		}
+	} else {
+		fmt.Fprintf(&bs, "and unlinked %d subtask%s:\n", len(t.Children), plural)
+		for _, c := range t.Children {
+			(*c).Parent.Id = 0
+			if err = (*c).Update(db); err != nil {
+				return err
+			}
+			fmt.Fprintf(&bs, "\t%d - %s\n", (*c).Id, (*c).Summary)
+		}
 	}
 	fmt.Println(bs.String())
 	return err
@@ -254,23 +254,23 @@ func (p *Parser) Hold(db *sql.DB) (err error) {
 		return err
 	}
 	if len(t.Children) == 0 {
-        return err
-    }
-    plural := ""
-    if len(t.Children) > 1 {
-        plural = "s"
-    }
-    var bs strings.Builder
-    fmt.Fprintf(&bs, "including %d subtask%s:\n", len(t.Children), plural)
+		return err
+	}
+	plural := ""
+	if len(t.Children) > 1 {
+		plural = "s"
+	}
+	var bs strings.Builder
+	fmt.Fprintf(&bs, "including %d subtask%s:\n", len(t.Children), plural)
 
-    for _, c := range t.Children {
-        (*c).Status = STATUS_HOLD
+	for _, c := range t.Children {
+		(*c).Status = STATUS_HOLD
 
-        if err = (*c).Update(db); err != nil {
-            return err
-        }
-        fmt.Fprintf(&bs, "\t%d - %s\n", (*c).Id, (*c).Summary)
-    }
+		if err = (*c).Update(db); err != nil {
+			return err
+		}
+		fmt.Fprintf(&bs, "\t%d - %s\n", (*c).Id, (*c).Summary)
+	}
 	fmt.Println(bs.String())
 	return err
 }

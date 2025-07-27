@@ -3,12 +3,16 @@ package main
 var priorityMap = map[string]int{
 	"none":     PRIORITY_NONE,
 	"low":      PRIORITY_LOW,
+	"l":      PRIORITY_LOW,
 	"medium":   PRIORITY_MED,
 	"mid":      PRIORITY_MED,
+	"m":      PRIORITY_MED,
 	"high":     PRIORITY_HIGH,
 	"hi":       PRIORITY_HIGH,
+	"h":       PRIORITY_HIGH,
 	"critical": PRIORITY_CRIT,
 	"crit":     PRIORITY_CRIT,
+	"c":     PRIORITY_CRIT,
 }
 
 var statusMap = map[int]string{

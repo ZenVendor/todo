@@ -9,7 +9,7 @@ type Config struct {
 	DBName            string `yaml:"dbName"`
 	DateFormat        string `yaml:"dateFormat"`
 	DefaultProject    string `yaml:"defaultProject"`
-    Editor          string `yaml:"editor"`
+	Editor            string `yaml:"editor"`
 }
 
 type Task struct {
