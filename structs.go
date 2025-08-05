@@ -28,6 +28,7 @@ type Task struct {
 	DateUpdated    sql.NullTime
 	SysStatus      int
 }
+
 type TaskList []*Task
 
 type Project struct {

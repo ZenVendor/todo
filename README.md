@@ -2,6 +2,11 @@
 This is a command line TODO program.
 It does one thing at a time, by design. 
 
+## TODO
+* Add project functions (counts, rename, delete)
+* Create install script
+* There's more but it escapes my memory...
+
 ## Config
 * Default config file: todo_config.yml
 * Default db file: todo.db

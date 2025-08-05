@@ -24,6 +24,7 @@ func (c *Config) validateProject(value string) (interface{}, error) {
 	}
 	return proj, nil
 }
+
 func (c *Config) validatePriority(value string) (interface{}, error) {
 	if value == "" {
 		return PRIORITY_NONE, nil
